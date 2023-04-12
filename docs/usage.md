@@ -316,7 +316,7 @@ You can adjust the aligner in the parameters `--aligner` : [`'bwamem'`,`'bwamem2
 #### samtools view
 - `-q 1` : quality score
 
-## What does the bam_intervals_bedtools.nf subworkflow do?
+### What does the bam_intervals_bedtools.nf subworkflow do?
 
 Passes multiple files containing region information for multithreading with `freebayes`. 
 

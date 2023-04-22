@@ -26,6 +26,9 @@ workflow PROCESS_RAD {
     ch_fastp = FASTP (reads, [[],[]], true, false, false).reads // [[meta],[reads]], save_trimmed_failed, save_merged
     ch_versions = ch_versions.mix(FASTP.out.versions)
 
+    // checks filtering results and outputs warning if below params.min_reads_after_fastp
+    FASTP.out.json.map { WorkflowRadseq.getFastpReadsAfterFiltering(params,log,it) }
+
     emit:
     trimmed_reads = ch_fastp
     read_lengths

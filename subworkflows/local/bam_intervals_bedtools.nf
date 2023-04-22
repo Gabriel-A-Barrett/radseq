@@ -26,11 +26,7 @@ workflow BAM_INTERVALS_BEDTOOLS {
     ch_bed = BEDTOOLS_BAMTOBED (ch_bam).bed
     ch_versions = ch_versions.mix (BEDTOOLS_BAMTOBED.out.versions)
 
-    ch_bed_to_merge = ch_bed.map {
-        meta, bed -> 
-            [['id':meta.id.split(/\d+/)[0]], bed ] // split based on number and return the first element and group bed files based on shared id string
-        }
-        .groupTuple()
+    ch_bed_to_merge = ch_bed.map { WorkflowRadseq.groupMetaID(it) }.groupTuple()
 
     ch_mbed = BEDOPS_MERGE_BED (ch_bed_to_merge).bed
     ch_versions = ch_versions.mix(BEDOPS_MERGE_BED.out.versions)
@@ -42,11 +38,7 @@ workflow BAM_INTERVALS_BEDTOOLS {
     cov = BEDTOOLS_COVERAGE (ch_bed.combine(ch_sorted_mbed.map{it[1]}).map{meta,bed,mbed -> [meta,mbed,bed]}, faidx.first()).bed
     ch_versions = ch_versions.mix (BEDTOOLS_COVERAGE.out.versions)
 
-    ch_cov_to_merge = cov.map {
-        meta, bed -> 
-            [['id':meta.id.split(/\d+/)[0]], bed ]
-        }
-        .groupTuple()
+    ch_cov_to_merge = cov.map { WorkflowRadseq.groupMetaID(it) }.groupTuple()
 
     // combines overlapping features into a single report
     ch_mcov = BEDTOOLS_MERGE_COV (ch_cov_to_merge, faidx.first()).cov

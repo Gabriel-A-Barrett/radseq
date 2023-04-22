@@ -32,7 +32,8 @@ workflow BAM_VARIANT_CALLING_FREEBAYES {
 
     ch_final_tbi = TABIX_TABIX2 (BCFTOOLS_CONCAT.out.vcf).tbi
 
-    BCFTOOLS_STATS (BCFTOOLS_CONCAT.out.vcf.join(ch_final_tbi), [], [], [])
+    BCFTOOLS_STATS (BCFTOOLS_CONCAT.out.vcf.join(ch_final_tbi), [], [], [])    
+    ch_versions = ch_versions.mix(BCFTOOLS_STATS.out.versions)
 
     emit:
     vcf      = BCFTOOLS_CONCAT.out.vcf

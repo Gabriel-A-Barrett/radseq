@@ -1,6 +1,8 @@
 //
 // This file holds several functions specific to the workflow/radseq.nf in the nf-core/radseq pipeline
 //
+import nextflow.Nextflow
+import groovy.json.JsonSlurper
 
 class WorkflowRadseq {
 
@@ -32,6 +34,56 @@ class WorkflowRadseq {
                 log.warn("using default range of values for minReadDepth_BetweenIndividual")
             }   
         }  
+    }
+
+    public static ArrayList groupMetaID(channel) {
+        def meta = channel[0]
+        def paths = channel[1]
+        def metaf = [:] // initialize groovy map
+        metaf.id =  meta.id.split(/[^\p{L}]/)[0] // set id splits at the first number appearance and retains items to the left
+        metaf.single_end = meta.single_end
+
+        [metaf, paths]
+    }
+
+    //
+    // Function to check alignment rate
+    //
+    public static ArrayList getBamPercentMapped(params, flagstat_log) {
+        def percent_aligned = 0
+        // 46 + 0 mapped (100.00% : N/A)
+        def pattern = /primary\s+mapped\s+\((\d+\.\d+)%\s*:/
+        flagstat_log[1].eachLine { line ->
+            def matcher = line =~ pattern
+            if (matcher) {
+                percent_aligned = matcher[0][1].toFloat()
+                }
+            }
+            def pass = false
+            if (percent_aligned >= params.min_percent_aligned.toFloat()) {
+                pass = true
+            } 
+            return [ flagstat_log[0], percent_aligned, pass ]
+        }
+
+    //
+    // Function to generate error if no reads after filtering
+    //
+    public static ArrayList getFastpReadsAfterFiltering(params, log, json_file) {
+        // read json file
+        def json = new JsonSlurper().parseText(json_file[1].text)
+        
+        // extract particular element
+        def after_filtering = json.summary.after_filtering.total_reads.toInteger()
+        
+        def pass = false
+        if (after_filtering >= params.min_reads_after_fastp.toInteger()) {
+            pass = true
+        } else {
+            //log.warn("low read count after fastp filtering ${json_file[0]}.id ${after_filtering}")
+            log.warn("low read count after fastp filtering")
+        }
+        return [json_file[0], after_filtering ,pass]
     }
 
     //

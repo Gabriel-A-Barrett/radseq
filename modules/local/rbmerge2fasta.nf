@@ -10,6 +10,8 @@ process RBMERGE2FASTA {
     input:
     tuple val (meta), path (rbdiv)
     tuple val (meta), path (rbmerge)
+    val (minReadDepth_WithinIndividual)
+    val (minReadDepth_BetweenIndividual)
 
     output:
     tuple val (meta), path ('*_rainbow.fasta'), emit: fasta

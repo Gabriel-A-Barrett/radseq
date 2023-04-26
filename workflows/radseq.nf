@@ -40,6 +40,7 @@ include { CDHIT_RAINBOW as DENOVO                } from '../subworkflows/local/f
 include { FASTQ_INDEX_ALIGN_BWA_MINIMAP as ALIGN } from '../subworkflows/local/fastq_index_align_bwa_minimap'
 include { BAM_INTERVALS_BEDTOOLS                 } from '../subworkflows/local/bam_intervals_bedtools'
 include { BAM_VARIANT_CALLING_FREEBAYES          } from '../subworkflows/local/bam_variant_calling_freebayes'
+include { FASTQ_UNZIP                            } from '../subworkflows/local/fastq_unzip.nf'
 
 /*
 ========================================================================================
@@ -67,7 +68,7 @@ def multiqc_report = []
 workflow RADSEQ {
 
     ch_versions = Channel.empty()
-
+    
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
     //
@@ -88,8 +89,11 @@ workflow RADSEQ {
     switch ( params.method ) {
         // assign ch_reference (input for aligning subworkflow) to the reference in the params
         case 'reference':
-            ch_reference = Channel.fromPath(params.genome)
-                .map{genome -> tuple (genome.simpleName, genome)} 
+            //
+            // SUBWORKFLOW: unzips fasta if ends with .gz
+            //
+            ch_reference = FASTQ_UNZIP (params.genome).fasta.map { genome -> 
+                tuple (genome.simpleName, genome)}
             break
         case 'denovo':
             /* SUBWORKFLOW: Cluster READS after applying unique read thresholds within and among samples.

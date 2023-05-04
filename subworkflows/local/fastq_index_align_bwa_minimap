@@ -11,6 +11,9 @@ include { MINIMAP2_ALIGN                       } from '../../modules/nf-core/min
 include { UMITOOLS_DEDUP                       } from '../../modules/nf-core/umitools/dedup/main.nf'
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_UMI } from '../../modules/nf-core/samtools/index/main.nf'
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_BAM } from '../../modules/nf-core/samtools/index/main.nf'
+include { GATK4_CREATESEQUENCEDICTIONARY       } from '../../modules/nf-core/gatk4/createsequencedictionary/main'
+
+include { FASTQ_CREATE_UMI_CONSENSUS_FGBIO     } from '../nf-core/fastq_create_umi_consensus_fgbio/main.nf' 
 include { BAM_STATS_SAMTOOLS                   } from '../nf-core/bam_stats_samtools/main.nf'
 include { BAM_MERGE_INDEX_SAMTOOLS             } from '../local/bam_merge_index_samtools'
 
@@ -27,34 +30,40 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
     main:
     ch_versions = Channel.empty()
 
+    // split up based on umi's
+    reads2umi = reads
+        .branch { meta, reads ->
+            umi: meta.umi_barcodes == true
+            no_umi: meta.umi_barcodes == false
+        }
+
+    dict = GATK4_CREATESEQUENCEDICTIONARY ( fasta.map{it[1]} ).dict
+
+    FASTQ_CREATE_UMI_CONSENSUS_FGBIO ( reads2umi.umi, fasta, [], dict, params.umi_strategy, params.aligner, params.duplex, read_lengths)
+    umi_bam = FASTQ_CREATE_UMI_CONSENSUS_FGBIO.out.mappedconsensusbam
+
+    // grab bwa indices from subworkflow
+    bwaindex = FASTQ_CREATE_UMI_CONSENSUS_FGBIO.out.bwaindex
+
     switch ( params.aligner ) {
 
-        case 'bwamem': 
+        case 'bwa-mem': 
 
-            BWA_INDEX (fasta)
-            ch_versions = ch_versions.mix(BWA_INDEX.out.versions)
+            //BWA_INDEX (fasta)
+            //ch_versions = ch_versions.mix(BWA_INDEX.out.versions)
 
             // add specific arguments 
-            bam = BWA_MEM (reads, BWA_INDEX.out.index.first(), true, sequence_type, read_lengths.collect()).bam
+            bam = BWA_MEM (reads2umi.no_umi, bwaindex.first(), true, sequence_type, read_lengths.collect()).bam
             ch_versions = ch_versions.mix(BWA_MEM.out.versions)
                 break
-        
-        /*case 'minimap2':
 
-            //MINIMAP_INDEX (fasta)
-            //ch_versions = ch_versions.mix(MINIMAP_INDEX.out.versions)
+        case 'bwa-mem2':
 
-            bam = MINIMAP2_ALIGN (reads, fasta.map{it[1]}.first(), true, false, false).bam
-            ch_versions = ch_versions.mix(MINIMAP2_ALIGN.out.versions)
-                break*/
-
-        case 'bwamem2':
-
-            BWAMEM2_INDEX (fasta)
-            ch_versions = ch_versions.mix(BWAMEM2_INDEX.out.versions)
+            //BWAMEM2_INDEX (fasta)
+            //ch_versions = ch_versions.mix(BWAMEM2_INDEX.out.versions)
 
             // add specific arguments 
-            bam = BWAMEM2_MEM (reads, BWAMEM2_INDEX.out.index.first(), true, sequence_type, read_lengths.collect()).bam
+            bam = BWAMEM2_MEM (reads2umi.no_umi, bwaindex.first(), true, sequence_type, read_lengths.collect()).bam
             ch_versions = ch_versions.mix(BWAMEM2_MEM.out.versions)
                 break
         
@@ -71,12 +80,12 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
             no_umi: meta.umi_barcodes == false
         }
     // need indices with bam files for umitools dedup
-    bam_bai_to_umi = SAMTOOLS_INDEX_UMI(bam_to_umi.umi).bai.join(bam_to_umi.umi).map{meta, bai, bam -> [meta, bam, bai]}
-    ch_versions = ch_versions.mix(SAMTOOLS_INDEX_UMI.out.versions)
+    //bam_bai_to_umi = SAMTOOLS_INDEX_UMI(bam_to_umi.umi).bai.join(bam_to_umi.umi).map{meta, bai, bam -> [meta, bam, bai]}
+    //ch_versions = ch_versions.mix(SAMTOOLS_INDEX_UMI.out.versions)
 
     // query only reads that satisfied the above condition
-    umi_bam = UMITOOLS_DEDUP (bam_bai_to_umi, true).bam
-    ch_versions = ch_versions.mix(UMITOOLS_DEDUP.out.versions)
+    //umi_bam = UMITOOLS_DEDUP (bam_bai_to_umi, true).bam
+    //ch_versions = ch_versions.mix(UMITOOLS_DEDUP.out.versions)
 
     bai = SAMTOOLS_INDEX_BAM (bam_to_umi.no_umi.mix(umi_bam)).bai
     ch_versions = ch_versions.mix(SAMTOOLS_INDEX_BAM.out.versions)

@@ -99,11 +99,46 @@
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
                         "installed_by": ["modules"]
                     },
+                    "fgbio/callduplexconsensusreads": {
+                        "branch": "master",
+                        "git_sha": "0f8a77ff00e65eaeebc509b8156eaa983192474b",
+                        "installed_by": ["modules"]
+                    },
+                    "fgbio/callmolecularconsensusreads": {
+                        "branch": "master",
+                        "git_sha": "40ce6b3788fed8eeba5f6bc17bdb58476a60821d",
+                        "installed_by": ["modules"]
+                    },
+                    "fgbio/fastqtobam": {
+                        "branch": "master",
+                        "git_sha": "0f8a77ff00e65eaeebc509b8156eaa983192474b",
+                        "installed_by": ["modules"]
+                    },
+                    "fgbio/filterconsensusreads": {
+                        "branch": "master",
+                        "git_sha": "0f8a77ff00e65eaeebc509b8156eaa983192474b",
+                        "installed_by": ["modules"]
+                    },
+                    "fgbio/groupreadsbyumi": {
+                        "branch": "master",
+                        "git_sha": "0f8a77ff00e65eaeebc509b8156eaa983192474b",
+                        "installed_by": ["modules"]
+                    },
+                    "fgbio/zipperbams": {
+                        "branch": "master",
+                        "git_sha": "0f8a77ff00e65eaeebc509b8156eaa983192474b",
+                        "installed_by": ["modules"]
+                    },
                     "freebayes": {
                         "branch": "master",
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
                         "installed_by": ["modules"],
                         "patch": "modules/nf-core/freebayes/freebayes.diff"
+                    },
+                    "gatk4/createsequencedictionary": {
+                        "branch": "master",
+                        "git_sha": "643756685546fa61f5c8fba439af746c090b9180",
+                        "installed_by": ["modules"]
                     },
                     "gunzip": {
                         "branch": "master",
@@ -130,6 +165,11 @@
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
                         "installed_by": ["modules"]
                     },
+                    "samtools/fastq": {
+                        "branch": "master",
+                        "git_sha": "371eff7748d769c2ddc8bd593773523a364a52fe",
+                        "installed_by": ["modules"]
+                    },
                     "samtools/flagstat": {
                         "branch": "master",
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
@@ -150,9 +190,19 @@
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
                         "installed_by": ["modules"]
                     },
+                    "samtools/sort": {
+                        "branch": "master",
+                        "git_sha": "371eff7748d769c2ddc8bd593773523a364a52fe",
+                        "installed_by": ["modules"]
+                    },
                     "samtools/stats": {
                         "branch": "master",
                         "git_sha": "c8e35eb2055c099720a75538d1b8adb3fb5a464c",
+                        "installed_by": ["modules"]
+                    },
+                    "samtools/view": {
+                        "branch": "master",
+                        "git_sha": "371eff7748d769c2ddc8bd593773523a364a52fe",
                         "installed_by": ["modules"]
                     },
                     "seqtk/seq": {

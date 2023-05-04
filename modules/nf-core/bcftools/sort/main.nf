@@ -24,7 +24,7 @@ process BCFTOOLS_SORT {
     """
     bcftools \\
         sort \\
-        --output ${prefix}${interval}.vcf.gz \\
+        --output ${prefix}_sort${interval}.vcf.gz \\
         $args \\
         $vcf
 

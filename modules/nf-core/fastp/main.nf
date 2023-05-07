@@ -112,6 +112,7 @@ process FASTP {
             BusyBox: \$(busybox | sed -n -E 's/.*v([[:digit:].]+)\\s\\(.*/\\1/p')
         END_VERSIONS
         """    
+
     } else if (meta.single_end) {
         """
         [ ! -f  ${prefix}.fastq.gz ] && ln -sf ${reads} ${prefix}.fastq.gz

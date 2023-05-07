@@ -1,0 +1,15 @@
+[2023/05/07 14:22:34 | FgBioMain | Info] Executing GroupReadsByUmi from fgbio version 2.0.2 as root@d42ec55bf02e on JRE 11.0.9.1-internal+0-adhoc..src with snappy, IntelInflater, and IntelDeflater
+[2023/05/07 14:22:34 | GroupReadsByUmi | Info] Filtering the input.
+[2023/05/07 14:22:34 | GroupReadsByUmi | Info] Sorting the input to TemplateCoordinate order.
+[2023/05/07 14:22:34 | FgBioMain | Info] GroupReadsByUmi failed. Elapsed time: 0.02 minutes.
+Exception in thread "main" java.lang.NullPointerException
+	at com.fulcrumgenomics.umi.GroupReadsByUmi.$anonfun$execute$13(GroupReadsByUmi.scala:569)
+	at scala.collection.Iterator$$anon$18.next(Iterator.scala:945)
+	at scala.collection.IterableOnceOps.foreach(IterableOnce.scala:563)
+	at scala.collection.IterableOnceOps.foreach$(IterableOnce.scala:561)
+	at scala.collection.AbstractIterator.foreach(Iterator.scala:1293)
+	at com.fulcrumgenomics.umi.GroupReadsByUmi.execute(GroupReadsByUmi.scala:592)
+	at com.fulcrumgenomics.cmdline.FgBioMain.makeItSo(FgBioMain.scala:124)
+	at com.fulcrumgenomics.cmdline.FgBioMain.makeItSoAndExit(FgBioMain.scala:99)
+	at com.fulcrumgenomics.cmdline.FgBioMain$.main(FgBioMain.scala:50)
+	at com.fulcrumgenomics.cmdline.FgBioMain.main(FgBioMain.scala)

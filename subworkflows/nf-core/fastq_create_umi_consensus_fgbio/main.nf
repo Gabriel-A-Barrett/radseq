@@ -135,6 +135,8 @@ workflow FASTQ_CREATE_UMI_CONSENSUS_FGBIO {
         groupready_bam = ZIPPERBAMS_PRE.out.bam
     }
 
+
+
     // appropriately tagged reads are now grouped by UMI information
     // note that in tests ext.args has been set to recommended --edits 1
     // if UMIs are significantly longer (e.g. 20bp) or have more errors, --edits can be increased

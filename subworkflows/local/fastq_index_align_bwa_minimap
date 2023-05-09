@@ -1,19 +1,10 @@
-//
-// Align reads w/ BWA or MINIMAP
-//
-
-include { BWA_INDEX                            } from '../../modules/nf-core/bwa/index/main.nf'
-include { BWA_MEM                              } from '../../modules/nf-core/bwa/mem/main.nf'
-include { BWAMEM2_INDEX                        } from '../../modules/nf-core/bwamem2/index/main.nf'
-include { BWAMEM2_MEM                          } from '../../modules/nf-core/bwamem2/mem/main.nf'
-include { MINIMAP2_INDEX                       } from '../../modules/nf-core/minimap2/index/main.nf'
-include { MINIMAP2_ALIGN                       } from '../../modules/nf-core/minimap2/align/main.nf'
-include { UMITOOLS_DEDUP                       } from '../../modules/nf-core/umitools/dedup/main.nf'
-include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_UMI } from '../../modules/nf-core/samtools/index/main.nf'
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_BAM } from '../../modules/nf-core/samtools/index/main.nf'
 include { GATK4_CREATESEQUENCEDICTIONARY       } from '../../modules/nf-core/gatk4/createsequencedictionary/main'
 
-include { FASTQ_CREATE_UMI_CONSENSUS_FGBIO     } from '../nf-core/fastq_create_umi_consensus_fgbio/main.nf' 
+
+include { FASTQ_BWA_INDEX_MEM                  } from '../local/fastq_bwa_index_mem'
+include { FASTQ_CREATE_UMI_CONSENSUS_FGBIO     } from '../nf-core/fastq_create_umi_consensus_fgbio/main.nf'
+include { BAM_UMITOOLS_DEDUP                   } from '../local/bam_umitools_dedup'
 include { BAM_STATS_SAMTOOLS                   } from '../nf-core/bam_stats_samtools/main.nf'
 include { BAM_MERGE_INDEX_SAMTOOLS             } from '../local/bam_merge_index_samtools'
 
@@ -30,70 +21,58 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
     main:
     ch_versions = Channel.empty()
 
-    // split up based on umi's
-    reads2umi = reads
-        .branch { meta, reads ->
-            umi: meta.umi_barcodes == true
-            no_umi: meta.umi_barcodes == false
-        }
 
-    dict = GATK4_CREATESEQUENCEDICTIONARY ( fasta.map{it[1]} ).dict
+    if (params.dedup_tool.contains('fgbio')) {
 
-    FASTQ_CREATE_UMI_CONSENSUS_FGBIO ( reads2umi.umi, fasta, [], dict, params.umi_strategy, params.aligner, params.duplex, read_lengths)
-    umi_bam = FASTQ_CREATE_UMI_CONSENSUS_FGBIO.out.mappedconsensusbam
+        // split up based on umi's
+        reads2umi = reads
+            .branch { meta, reads ->
+                umi: meta.umi_barcodes == true
+                no_umi: meta.umi_barcodes == false
+            }
 
-    // grab bwa indices from subworkflow
-    bwaindex = FASTQ_CREATE_UMI_CONSENSUS_FGBIO.out.bwaindex
+        dict = GATK4_CREATESEQUENCEDICTIONARY ( fasta.map{it[1]} ).dict
 
-    switch ( params.aligner ) {
+        FASTQ_CREATE_UMI_CONSENSUS_FGBIO ( reads2umi.umi, fasta, [], dict, params.umi_strategy, params.aligner, params.duplex, read_lengths )
+        dedup_bam = FASTQ_CREATE_UMI_CONSENSUS_FGBIO.out.mappedconsensusbam
 
-        case 'bwa-mem': 
+        // grab bwa indices from subworkflow
+        bwaindex = FASTQ_CREATE_UMI_CONSENSUS_FGBIO.out.bwaindex
 
-            //BWA_INDEX (fasta)
-            //ch_versions = ch_versions.mix(BWA_INDEX.out.versions)
+        bam = FASTQ_BWA_INDEX_MEM ( reads2umi.no_umi, fasta, sequence_type, read_lengths ).bam
 
-            // add specific arguments 
-            bam = BWA_MEM (reads2umi.no_umi, bwaindex.first(), true, sequence_type, read_lengths.collect()).bam
-            ch_versions = ch_versions.mix(BWA_MEM.out.versions)
-                break
+        // INDEX
+        bai = SAMTOOLS_INDEX_BAM (dedup_bam.mix(bam)).bai
+        ch_versions = ch_versions.mix(SAMTOOLS_INDEX_BAM.out.versions)
 
-        case 'bwa-mem2':
+        bam_bai = bam
+            .mix(dedup_bam)
+            .join(bai)
 
-            //BWAMEM2_INDEX (fasta)
-            //ch_versions = ch_versions.mix(BWAMEM2_INDEX.out.versions)
+    } else {
 
-            // add specific arguments 
-            bam = BWAMEM2_MEM (reads2umi.no_umi, bwaindex.first(), true, sequence_type, read_lengths.collect()).bam
-            ch_versions = ch_versions.mix(BWAMEM2_MEM.out.versions)
-                break
-        
-        default:
-        
-        exit 1, "unsupported aligner: ${aligner} \n supported options:" + params.aligner_options
-    
+        //alignments happen before umi
+        bam = FASTQ_BWA_INDEX_MEM ( reads, fasta, sequence_type, read_lengths ).bam
+
+        bam2umi = bam
+            .branch { meta, reads ->
+                umi: meta.umi_barcodes == true
+                no_umi: meta.umi_barcodes == false
+            }
+
+        dedup_bam = BAM_UMITOOLS_DEDUP ( bam2umi.umi ).consensusbam
+
+        // INDEX
+        bai = SAMTOOLS_INDEX_BAM (dedup_bam.mix(bam2umi.no_umi)).bai
+        ch_versions = ch_versions.mix(SAMTOOLS_INDEX_BAM.out.versions)
+
+        // Append no umi's
+        bam_bai = bam2umi.no_umi
+            .mix(dedup_bam)
+            .join(bai)
+
+
     }
-
-    // split up into 2 channels to decide input for deduplication
-    bam_to_umi = bam
-        .branch { meta, bam ->
-            umi: meta.umi_barcodes == true
-            no_umi: meta.umi_barcodes == false
-        }
-    // need indices with bam files for umitools dedup
-    //bam_bai_to_umi = SAMTOOLS_INDEX_UMI(bam_to_umi.umi).bai.join(bam_to_umi.umi).map{meta, bai, bam -> [meta, bam, bai]}
-    //ch_versions = ch_versions.mix(SAMTOOLS_INDEX_UMI.out.versions)
-
-    // query only reads that satisfied the above condition
-    //umi_bam = UMITOOLS_DEDUP (bam_bai_to_umi, true).bam
-    //ch_versions = ch_versions.mix(UMITOOLS_DEDUP.out.versions)
-
-    bai = SAMTOOLS_INDEX_BAM (bam_to_umi.no_umi.mix(umi_bam)).bai
-    ch_versions = ch_versions.mix(SAMTOOLS_INDEX_BAM.out.versions)
-
-    // add deduplicated umi reads to no_umi channnel and join the index's
-    bam_bai = bam_to_umi.no_umi
-        .mix(umi_bam)
-        .join(bai)
 
     // get statistics
     BAM_STATS_SAMTOOLS (bam_bai, fasta.map{it[1]}.first())

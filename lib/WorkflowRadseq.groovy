@@ -10,7 +10,6 @@ class WorkflowRadseq {
     // Check and validate parameters
     //
     public static void initialise(params, log) {
-        //genomeExistsError(params, log) // function below
 
         if (!params.method) {
             log.error "type of workflow to execute not specified with e.g. '--method denovo' or via a detectable config file."

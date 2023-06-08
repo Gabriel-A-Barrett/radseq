@@ -19,7 +19,7 @@ workflow FASTQ_BWA_INDEX_MEM {
 
         case 'bwa-mem': 
 
-            bwaindex = BWA_INDEX (fasta)
+            bwaindex = BWA_INDEX (fasta).index
             ch_versions = ch_versions.mix(BWA_INDEX.out.versions)
 
             // add specific arguments 

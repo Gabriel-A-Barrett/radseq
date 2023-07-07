@@ -5,7 +5,7 @@ process FGBIO_FASTQTOBAM {
     conda "bioconda::fgbio=2.0.2"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://depot.galaxyproject.org/singularity/fgbio:2.0.2--hdfd78af_0' :
-        'quay.io/biocontainers/fgbio:2.0.2--hdfd78af_0' }"
+        'biocontainers/fgbio:2.0.2--hdfd78af_0' }"
 
     input:
     tuple val(meta), path(reads)
@@ -23,7 +23,7 @@ process FGBIO_FASTQTOBAM {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def sample_name = args.contains("--sample") ? "" : "--sample ${prefix}"
     def library_name = args.contains("--library") ? "" : "--library ${prefix}"
-    def output = prefix =~ /\.(bam|cram)$/ ? prefix : "${prefix}_unmapped.bam"
+    def output = prefix =~ /\.(bam|cram)$/ ? prefix : "${prefix}.bam"
     """
 
     fgbio \\

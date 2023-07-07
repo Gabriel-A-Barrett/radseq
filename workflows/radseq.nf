@@ -41,6 +41,7 @@ include { FASTQ_INDEX_ALIGN_BWA_MINIMAP as ALIGN } from '../subworkflows/local/f
 include { BAM_INTERVALS_BEDTOOLS                 } from '../subworkflows/local/bam_intervals_bedtools'
 include { BAM_VARIANT_CALLING_FREEBAYES          } from '../subworkflows/local/bam_variant_calling_freebayes'
 include { FASTQ_UNZIP                            } from '../subworkflows/local/fastq_unzip.nf'
+include { VCF_BCFTOOLS_RADSEQ_FILTERS            } from '../subworkflows/local/vcf_bcftools_radseq_filters.nf'
 
 /*
 ========================================================================================
@@ -93,7 +94,7 @@ workflow RADSEQ {
             // SUBWORKFLOW: unzips fasta if ends with .gz
             //
             ch_reference = FASTQ_UNZIP (params.genome).fasta.map { genome -> 
-                tuple (genome.simpleName, genome)}
+                tuple ([id:genome.simpleName], genome) }
             break
         case 'denovo':
             /* SUBWORKFLOW: Cluster READS after applying unique read thresholds within and among samples.
@@ -109,10 +110,15 @@ workflow RADSEQ {
     }
 
     // nf-core module index reference for bedtools + freebayes
-    ch_faidx = SAMTOOLS_FAIDX (
+    if (params.faidx) {
+        ch_faidx = Channel.fromPath(params.faidx).map{ faidx ->
+            tuple ([id:faidx.simpleName], faidx) }
+    } else {
+        ch_faidx = SAMTOOLS_FAIDX (
         ch_reference
         ).fai
-    ch_versions = ch_versions.mix(SAMTOOLS_FAIDX.out.versions)
+        ch_versions = ch_versions.mix(SAMTOOLS_FAIDX.out.versions)
+    }
 
     //
     // SUBWORKFLOW: generate fasta indexes, align input files, dedup reads, index bam, calculate statistics
@@ -149,7 +155,7 @@ workflow RADSEQ {
     //
     // SUBWORKFLOW: freebayes parallel variant calling
     //
-    vcf = BAM_VARIANT_CALLING_FREEBAYES (
+    ch_vcf = BAM_VARIANT_CALLING_FREEBAYES (
         ch_bam_bai_bed,
         true,
         ch_reference.map{it[1]},
@@ -157,6 +163,15 @@ workflow RADSEQ {
     ).vcf
     ch_versions = ch_versions.mix(BAM_VARIANT_CALLING_FREEBAYES.out.versions)
     
+    ch_vcf_tbi = ch_vcf.join(BAM_VARIANT_CALLING_FREEBAYES.out.tbi)
+
+    //
+    // SUBWORKFLOW: Apply RADseq Specific Filters (depth, missingness, allele counts)
+    //
+    VCF_BCFTOOLS_RADSEQ_FILTERS ( 
+        ch_vcf_tbi, 
+        ch_reference )
+
     //
     // MODULE: Run FastQC
     //

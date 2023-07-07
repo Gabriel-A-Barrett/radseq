@@ -75,7 +75,7 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
     }
 
     // get statistics
-    BAM_STATS_SAMTOOLS (bam_bai, fasta.map{it[1]}.first())
+    BAM_STATS_SAMTOOLS (bam_bai, fasta)
     ch_versions = ch_versions.mix(BAM_STATS_SAMTOOLS.out.versions)
 
     // apply groovy function to add mapping percent to channel
@@ -86,7 +86,7 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
     // remove files that didn't make the threshold in params
     bam_bai.join(ch_percent_mapped).map { meta, bam, bai, mapped, pass -> if (pass) [meta,bam,bai] }.set { bam_bai_filtered }
 
-    mbam_bai = BAM_MERGE_INDEX_SAMTOOLS (bam_bai_filtered.map{meta,bam,bai -> [meta, bam]}, fasta.map{it[1]}.first(), fai.map{it[1]}.first()).bam_bai
+    mbam_bai = BAM_MERGE_INDEX_SAMTOOLS (bam_bai_filtered.map{meta,bam,bai -> [meta, bam]}, fasta, fai).bam_bai
     ch_versions = ch_versions.mix(BAM_MERGE_INDEX_SAMTOOLS.out.versions)
 
     emit:

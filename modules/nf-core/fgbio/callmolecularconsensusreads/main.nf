@@ -5,7 +5,7 @@ process FGBIO_CALLMOLECULARCONSENSUSREADS {
     conda "bioconda::fgbio=2.0.2"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://depot.galaxyproject.org/singularity/fgbio:2.0.2--hdfd78af_0' :
-        'quay.io/biocontainers/fgbio:2.0.2--hdfd78af_0' }"
+        'biocontainers/fgbio:2.0.2--hdfd78af_0' }"
 
     input:
     tuple val(meta), path(bam)
@@ -19,7 +19,7 @@ process FGBIO_CALLMOLECULARCONSENSUSREADS {
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}_consensus"
+    def prefix = task.ext.prefix ?: "${meta.id}"
     """
     fgbio \\
         --tmp-dir=. \\

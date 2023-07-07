@@ -5,7 +5,7 @@ process FGBIO_ZIPPERBAMS {
     conda "bioconda::fgbio=2.0.2"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://depot.galaxyproject.org/singularity/fgbio:2.0.2--hdfd78af_0' :
-        'quay.io/biocontainers/fgbio:2.0.2--hdfd78af_0' }"
+        'biocontainers/fgbio:2.0.2--hdfd78af_0' }"
 
     input:
     tuple val(meta), path(unmapped_bam)
@@ -14,7 +14,7 @@ process FGBIO_ZIPPERBAMS {
     path(dict)
 
     output:
-    tuple val(meta), path("*_zipped.bam"), emit: bam
+    tuple val(meta), path("${prefix}.bam"), emit: bam
     path "versions.yml"                   , emit: versions
 
     when:
@@ -24,7 +24,7 @@ process FGBIO_ZIPPERBAMS {
     def args  = task.ext.args ?: ''
     def args2 = task.ext.args2 ?: ''
     def compression = task.ext.compression ?: '0'
-    def prefix = task.ext.prefix ?: "${meta.id}_zipped"
+    prefix = task.ext.prefix ?: "${meta.id}_zipped"
     def fgbio_mem_gb = 4
 
     if (!task.memory) {

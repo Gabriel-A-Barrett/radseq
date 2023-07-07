@@ -1,6 +1,6 @@
-process BCFTOOLS_STATS {
+process BCFTOOLS_VIEW {
     tag "$meta.id"
-    label 'process_single'
+    label 'process_medium'
 
     conda "bioconda::bcftools=1.17"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -8,14 +8,14 @@ process BCFTOOLS_STATS {
         'biocontainers/bcftools:1.17--haef29d1_0' }"
 
     input:
-    tuple val(meta), path(vcf), path(tbi)
-    path regions
-    path targets
-    path samples
+    tuple val(meta), path(vcf), path(index)
+    path(regions)
+    path(targets)
+    path(samples)
 
     output:
-    tuple val(meta), path("*stats.txt"), emit: stats
-    path  "versions.yml"               , emit: versions
+    tuple val(meta), path("*.{vcf,vcf.gz,bcf,bcf.gz}") , emit: vcf
+    path "versions.yml"           , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -23,16 +23,23 @@ process BCFTOOLS_STATS {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def regions_file = regions ? "--regions-file ${regions}" : ""
+    def regions_file  = regions ? "--regions-file ${regions}" : ""
     def targets_file = targets ? "--targets-file ${targets}" : ""
     def samples_file =  samples ? "--samples-file ${samples}" : ""
+    def extension = args.contains("--output-type b") || args.contains("-Ob") ? "bcf.gz" :
+                    args.contains("--output-type u") || args.contains("-Ou") ? "bcf" :
+                    args.contains("--output-type z") || args.contains("-Oz") ? "vcf.gz" :
+                    args.contains("--output-type v") || args.contains("-Ov") ? "vcf" :
+                    "vcf.gz"
     """
-    bcftools stats \\
+    bcftools view \\
+        --output ${prefix}.${extension} \\
+        ${regions_file} \\
+        ${targets_file} \\
+        ${samples_file} \\
         $args \\
-        $regions_file \\
-        $targets_file \\
-        $samples_file \\
-        $vcf > ${prefix}.bcftools_stats.txt
+        --threads $task.cpus \\
+        ${vcf}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -42,9 +49,8 @@ process BCFTOOLS_STATS {
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
-
     """
-    touch ${prefix}.bcftools_stats.txt
+    touch ${prefix}.${extension}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

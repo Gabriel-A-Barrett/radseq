@@ -31,7 +31,7 @@ workflow BAM_INTERVALS_BEDTOOLS {
     ch_mbed = BEDOPS_MERGE_BED (ch_bed_to_merge).bed
     ch_versions = ch_versions.mix(BEDOPS_MERGE_BED.out.versions)
 
-    ch_sorted_mbed = BEDTOOLS_SORT (ch_mbed, faidx.first()).sorted
+    ch_sorted_mbed = BEDTOOLS_SORT (ch_mbed, faidx).sorted
     ch_versions = ch_versions.mix(BEDTOOLS_SORT.out.versions)
 
     // Calculate read coverage across indv. samples 
@@ -49,7 +49,7 @@ workflow BAM_INTERVALS_BEDTOOLS {
     ch_versions = ch_versions.mix (BEDTOOLS_MAKEWINDOWS.out.versions)
 
     // Writes overlapping regions into new bed file
-    ch_intersect = BEDTOOLS_INTERSECT (ch_mcov.join(ch_split_high_coverage), 'bed').intersect
+    ch_intersect = BEDTOOLS_INTERSECT (ch_mcov.join(ch_split_high_coverage)).intersect
     ch_versions = ch_versions.mix (BEDTOOLS_INTERSECT.out.versions)
 
     ch_createintervals = ch_mcov.join(ch_intersect).join(BEDTOOLS_MAKEWINDOWS.out.low_cov)

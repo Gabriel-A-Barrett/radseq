@@ -24,7 +24,6 @@ workflow VCF_BCFTOOLS_RADSEQ_FILTERS {
 
     RADSEQ_FILTERS_1 ( FILTER1.out.vcf , [], 'first')
     
-
     RADSEQ_FILTERS_2 ( FILTER1.out.vcf, RADSEQ_FILTERS_1.out.txt, 'second')
 
 }

@@ -46,7 +46,7 @@ workflow CDHIT_RAINBOW {
     // append thresholds to groovy map variable id
     new_ch = ch_uniq_full_fasta.map { meta, fasta ->
         def metaf = [:]
-        metaf.id = meta.id + '_' + fasta.toString().tokenize('_')[2] + '_' + fasta.toString().tokenize('_')[3]
+        metaf.id = meta.id + '_' + fasta.baseName.toString().tokenize('_')[2] + '_' + fasta.baseName.toString().tokenize('_')[3]
         metaf.single_end = meta.single_end
 
         return[metaf, fasta]

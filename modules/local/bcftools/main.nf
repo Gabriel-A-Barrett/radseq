@@ -31,7 +31,7 @@ process RADSEQ_FILTERS {
     def maxdp    = task.ext.args_maxdp ?: "\$MAX_DP"
     def args_indvfmiss = task.ext.args_indvfmiss ?: ''
     def prefix        = task.ext.prefix ?: "${meta.id}"
-    def extension     = "bcf.gz"
+    def extension     = "vcf.gz"
     
     if (round == 'first') {
         """
@@ -41,7 +41,7 @@ process RADSEQ_FILTERS {
         $mq
         $pr
         $st
-        bcftools filter -i"F_MISSING<${fmissing} && MAC>${mac} && INFO/DP<${maxdp} && FORMAT/DP>${mindp}" -Ob -o ${prefix}_RADseqPopFilters.${extension}
+        bcftools filter -i"F_MISSING<${fmissing} && MAC>${mac} && INFO/DP<${maxdp} && FORMAT/DP>${mindp}" -Oz -o ${prefix}_RADseqPopFilters.${extension}
 
         paste <(bcftools query -f '[%SAMPLE\\t]\\n' ${prefix}_RADseqPopFilters.${extension} | head -1 | tr '\\t' '\\n') \
         <(bcftools query -f '[%GT\\t]\\n' ${prefix}_RADseqPopFilters.${extension} | \
@@ -63,7 +63,7 @@ process RADSEQ_FILTERS {
          $mq
          $pr
          $st
-         bcftools view -S ^${samples2remove} -i"F_MISSING<${fmissing} && MAC>${mac} && INFO/DP<${maxdp} && FORMAT/DP>${mindp}" -Ob -o ${prefix}_rmvindv_RADseqPopFilters.${extension}
+         bcftools view -S ^${samples2remove} -i"F_MISSING<${fmissing} && MAC>${mac} && INFO/DP<${maxdp} && FORMAT/DP>${mindp}" -Oz -o ${prefix}_rmvindv_RADseqPopFilters.${extension}
 
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":

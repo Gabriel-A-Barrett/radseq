@@ -1,6 +1,6 @@
 process RAINBOW_DIV {
     tag "${meta.id}"
-    label 'process_medium'
+    label 'process_high'
 
     conda 'bioconda::rainbow=2.0.4'
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?

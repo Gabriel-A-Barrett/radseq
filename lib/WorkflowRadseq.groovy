@@ -41,8 +41,61 @@ class WorkflowRadseq {
         def metaf = [:] // initialize groovy map
         metaf.id =  meta.id.split(/[^\p{L}]/)[0] // set id splits at the first number appearance and retains items to the left
         metaf.single_end = meta.single_end
+        metaf.ref_id = meta.ref_id
 
         [metaf, paths]
+    } 
+
+    public static ArrayList addRefIdToChannels(params, channel) {
+        def metaf = [:]
+        def meta = channel[0]
+        def file = channel[1]
+        def array = []
+        // swtiched for two scenarios large and small channel
+        if (channel.size() > 3) {
+            // pair bam with correct index
+            def meta2 = channel[2]
+            def index = channel[3]
+            
+            if (params.method == 'denovo') {
+                metaf.id = meta.id 
+                metaf.umi_barcodes = meta.umi_barcodes
+                metaf.single_end = meta.single_end
+                metaf.ref_id = meta2.ref_id.tokenize( '_' )[0] + '_' + meta2.ref_id.tokenize( '_' )[1]
+
+            } else {
+                metaf.id = meta.id
+                metaf.umi_barcodes = meta.umi_barcodes
+                metaf.single_end = meta.single_end
+                metaf.ref_id = meta2.ref_id
+            }
+            array = [ metaf, file, index ] 
+        } else {
+            // impacts fasta, fai channels
+            if (params.method == 'denovo') {
+                // pair d fasta
+                metaf.id = meta.id
+                metaf.single_end = meta.single_end
+                if (file.toString().endsWith('.fasta')) {
+                    metaf.ref_id = file.baseName.toString().tokenize('_')[1] + '_' + file.baseName.toString().tokenize('_')[2]
+                } else {
+                    metaf.ref_id = meta.ref_id
+                }
+                array = [ metaf, file ]
+            } else {
+                // pair reference fasta
+                // have to include id, single_end, ref_id in meta for fai and fasta file
+                def meta2 = channel[2]
+                metaf.id = meta2.id.split(/[^\p{L}]/)[0]
+                metaf.single_end = meta2.single_end
+                if (file.toString().endsWith('.fasta')) {
+                    metaf.ref_id = file.baseName
+                } else {
+                    metaf.ref_id = meta.ref_id
+                }
+                array = [metaf, file]
+            }
+        }
     }
 
     //
@@ -84,6 +137,28 @@ class WorkflowRadseq {
         }
         return [json_file[0], after_filtering ,pass]
     }
+
+    public static ArrayList splitBedFile(params, log, bed) {
+        def meta = bed[0]
+        def inputLines = bed[1]
+
+        def outputFilePath  = inputLines.getParent() + '/split_bed_files'
+        outputFilePath.mkdir()
+        def outputFilePaths = []
+
+        inputLines.eachLine { line ->
+            def fields = line.split('\t')
+            def chrom = fields[0]
+            def startPos = fields[1] as int
+            def endPos = fields[2] as int
+
+            def outputFile = new File("${outputFilePath}/${chrom}_${startPos}_${endPos}.bed")
+            outputFile.write(line)
+
+            outputFilePaths << outputFile
+        }
+        return [meta, outputFilePaths]
+    } 
 
     //
     // Get workflow summary for MultiQC

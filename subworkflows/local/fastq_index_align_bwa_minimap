@@ -21,7 +21,6 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
     main:
     ch_versions = Channel.empty()
 
-
     if (params.dedup_tool.contains('fgbio')) {
 
         // split up based on umi's
@@ -31,7 +30,7 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
                 no_umi: meta.umi_barcodes == false
             }
 
-        dict = GATK4_CREATESEQUENCEDICTIONARY ( fasta.map{it[1]} ).dict
+        dict = GATK4_CREATESEQUENCEDICTIONARY ( fasta ).dict
 
         FASTQ_CREATE_UMI_CONSENSUS_FGBIO ( reads2umi.umi, fasta, [], dict, params.umi_strategy, params.aligner, params.duplex, read_lengths )
         dedup_bam = FASTQ_CREATE_UMI_CONSENSUS_FGBIO.out.mappedconsensusbam
@@ -70,12 +69,16 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
         bam_bai = bam2umi.no_umi
             .mix(dedup_bam)
             .join(bai)
-
-
     }
+    bam_bai_fasta = bam_bai
+        .map{meta,bam,bai ->
+            [[id:meta.id.split(/[^\p{L}]/)[0],single_end:meta.single_end,ref_id:meta.ref_id], bam, bai]}
+        .combine(fasta, by: [0])
+        .map{meta,bam,bai,fasta ->
+            [[id:bam.getSimpleName(),single_end:meta.single_end,ref_id:meta.ref_id], bam, bai, fasta]}
 
     // get statistics
-    BAM_STATS_SAMTOOLS (bam_bai, fasta)
+    BAM_STATS_SAMTOOLS (bam_bai_fasta)
     ch_versions = ch_versions.mix(BAM_STATS_SAMTOOLS.out.versions)
 
     // apply groovy function to add mapping percent to channel
@@ -84,12 +87,13 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
     }
 
     // remove files that didn't make the threshold in params
-    bam_bai.join(ch_percent_mapped).map { meta, bam, bai, mapped, pass -> if (pass) [meta,bam,bai] }.set { bam_bai_filtered }
+    bam_bai_fasta.join(ch_percent_mapped, by: [0]).map { meta, bam, bai, fasta, mapped, pass -> if (pass) [meta,bam,bai] }.set { bam_bai_filtered }
 
     mbam_bai = BAM_MERGE_INDEX_SAMTOOLS (bam_bai_filtered.map{meta,bam,bai -> [meta, bam]}, fasta, fai).bam_bai
     ch_versions = ch_versions.mix(BAM_MERGE_INDEX_SAMTOOLS.out.versions)
 
     emit:
+    bam      = bam_bai_filtered.map{meta,bam,bai -> [meta, bam]}
     bam_bai
     mbam_bai
     stats    = BAM_STATS_SAMTOOLS.out.stats

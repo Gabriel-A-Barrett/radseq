@@ -12,6 +12,8 @@ process BCFTOOLS_VIEW {
     path(regions)
     path(targets)
     path(samples)
+    each (fraction_missingness)
+    each (minor_allele_coun)
 
     output:
     tuple val(meta), path("*.{vcf,vcf.gz,bcf,bcf.gz}") , emit: vcf

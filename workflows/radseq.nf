@@ -93,8 +93,9 @@ workflow RADSEQ {
             //
             // SUBWORKFLOW: unzips fasta if ends with .gz
             //
-            ch_reference = FASTQ_UNZIP (params.genome).fasta.map { genome -> 
-                tuple ([id:genome.simpleName], genome) }
+            ch_reference = FASTQ_UNZIP (params.genome).fasta
+                .combine(PROCESS_RAD.out.trimmed_reads.map{it[0]}.first())
+                .map{ WorkflowRadseq.addRefIdToChannels(params, it) }
             break
         case 'denovo':
             /* SUBWORKFLOW: Cluster READS after applying unique read thresholds within and among samples.
@@ -111,14 +112,19 @@ workflow RADSEQ {
 
     // nf-core module index reference for bedtools + freebayes
     if (params.faidx) {
-        ch_faidx = Channel.fromPath(params.faidx).map{ faidx ->
-            tuple ([id:faidx.simpleName], faidx) }
+        ch_faidx = Channel.fromPath(params.faidx)
+            .combine(PROCESS_RAD.out.trimmed_reads.map{it[0]}.first())
+            .map{ WorkflowRadseq.addRefIdToChannels(params, it) }
     } else {
         ch_faidx = SAMTOOLS_FAIDX (
         ch_reference
         ).fai
+            .combine(PROCESS_RAD.out.trimmed_reads.map{it[0]}.first())
+            .map{ WorkflowRadseq.addRefIdToChannels(params, it) }
         ch_versions = ch_versions.mix(SAMTOOLS_FAIDX.out.versions)
     }
+
+    // embed function to have reference match bed and mbam_bai me
 
     //
     // SUBWORKFLOW: generate fasta indexes, align input files, dedup reads, index bam, calculate statistics
@@ -133,44 +139,53 @@ workflow RADSEQ {
     ch_versions = ch_versions.mix(ALIGN.out.versions)
 
     //
-    // SUBWORKFLOW: freebayes multithreading based on read coverage
+    // SUBWORKFLOW: freebayes multithreading based on read coverage or genome samtools faidx index
     //
     ch_intervals = BAM_INTERVALS_BEDTOOLS (
-        ch_bam_bai.map{meta, bam, bai -> [meta, bam]},
-        ch_faidx.map{it[1]},
+        ALIGN.out.bam,
+        ch_faidx,
         PROCESS_RAD.out.read_lengths,
         params.max_read_coverage_to_split
         ).intervals
     ch_versions = ch_versions.mix(BAM_INTERVALS_BEDTOOLS.out.versions)
 
-    ch_bam_bai_bed = ALIGN.out.mbam_bai
-        .combine(ch_intervals.map{it[1]})
-        .map { meta, bam, bai, bed -> 
+    /*ch_faidx.view()
+    ch_intervals.view()
+    ch_reference.view()
+    ALIGN.out.mbam_bai.view()
+    */
+    // expand channel across bed regions for variant calling multi-threading
+    ch_bam_bai_bed_fasta_fai = ALIGN.out.mbam_bai
+        .combine(ch_intervals, by: 0)
+        .combine(ch_reference, by: [0])
+        .combine(ch_faidx, by: [0])
+        .map { meta, bam, bai, bed, fasta, fai -> 
             [[
                 id:           meta.id,
-                interval:     bed.getName().tokenize( '.' )[1]
+                interval:     bed.getName().tokenize( '.' )[0],
+                ref_id:       meta.ref_id
             ],
-            bam, bai, bed]
+            bam, bai, file(bed), fasta, fai]
         }
     //
     // SUBWORKFLOW: freebayes parallel variant calling
     //
     ch_vcf = BAM_VARIANT_CALLING_FREEBAYES (
-        ch_bam_bai_bed,
-        true,
-        ch_reference.map{it[1]},
-        ch_faidx.map{it[1]}
+        ch_bam_bai_bed_fasta_fai,
+        true
     ).vcf
     ch_versions = ch_versions.mix(BAM_VARIANT_CALLING_FREEBAYES.out.versions)
-    
-    ch_vcf_tbi = ch_vcf.join(BAM_VARIANT_CALLING_FREEBAYES.out.tbi)
+
+    ch_vcf_tbi_fasta = ch_vcf
+        .join(BAM_VARIANT_CALLING_FREEBAYES.out.tbi,by:0)
+        .join(ch_reference.map{meta,fasta -> [[id:meta.id, ref_id:meta.ref_id] ,fasta]}, by:0)
+
 
     //
     // SUBWORKFLOW: Apply RADseq Specific Filters (depth, missingness, allele counts)
     //
     VCF_BCFTOOLS_RADSEQ_FILTERS ( 
-        ch_vcf_tbi, 
-        ch_reference )
+        ch_vcf_tbi_fasta,)
 
     //
     // MODULE: Run FastQC

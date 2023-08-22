@@ -9,7 +9,7 @@ workflow FASTQ_UNZIP {
     ch_versions = Channel.empty()
 
     if (fasta.endsWith('.gz')) {
-        ch_fasta    = GUNZIP_FASTA ( [ [:], fasta ] ).gunzip.map { it[1] }
+        ch_fasta    = GUNZIP_FASTA ( [ [:], fasta ] ).gunzip
         ch_versions = ch_versions.mix(GUNZIP_FASTA.out.versions)
     } else {
         ch_fasta    = Channel.fromPath(fasta)

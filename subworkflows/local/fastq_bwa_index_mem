@@ -22,8 +22,12 @@ workflow FASTQ_BWA_INDEX_MEM {
             bwaindex = BWA_INDEX (fasta).index
             ch_versions = ch_versions.mix(BWA_INDEX.out.versions)
 
+            // expand channel for multiple denovo references
+            ch_fastq_bwaindex = reads.combine(bwaindex)
+                .map { WorkflowRadseq.addRefIdToChannels(params, it) }
+
             // add specific arguments 
-            bam = BWA_MEM (reads, bwaindex.first(), true, sequence_type, read_lengths.collect()).bam
+            bam = BWA_MEM (ch_fastq_bwaindex, true, sequence_type, read_lengths.collect()).bam
             ch_versions = ch_versions.mix(BWA_MEM.out.versions)
                 break
 
@@ -32,8 +36,12 @@ workflow FASTQ_BWA_INDEX_MEM {
             bwaindex = BWAMEM2_INDEX (fasta).index 
             ch_versions = ch_versions.mix(BWAMEM2_INDEX.out.versions)
 
+            // expand channel for multiple denovo references and merge correct indices
+            ch_fastq_bwaindex = reads.combine(bwaindex)
+                .map { WorkflowRadseq.addRefIdToChannels(params, it) }
+
             // add specific arguments 
-            bam = BWAMEM2_MEM (reads, bwaindex.first(), true, sequence_type, read_lengths.collect()).bam
+            bam = BWAMEM2_MEM (ch_fastq_bwaindex, true, sequence_type, read_lengths.collect()).bam
             ch_versions = ch_versions.mix(BWAMEM2_MEM.out.versions)
                 break
             

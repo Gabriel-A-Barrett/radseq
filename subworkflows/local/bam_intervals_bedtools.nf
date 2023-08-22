@@ -32,9 +32,6 @@ workflow BAM_INTERVALS_BEDTOOLS {
     ch_mbed = BEDOPS_MERGE_BED (ch_bed_to_merge).bed
     ch_versions = ch_versions.mix(BEDOPS_MERGE_BED.out.versions)
 
-    ch_mbed.view()
-    ch_bed.view()
-
     if (params.variant_calling_interval_strategy == 'bedtools') {
 
         ch_sorted_mbed = BEDTOOLS_SORT (ch_mbed, faidx.map{it[1]}).sorted

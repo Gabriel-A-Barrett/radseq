@@ -149,11 +149,7 @@ workflow RADSEQ {
         ).intervals
     ch_versions = ch_versions.mix(BAM_INTERVALS_BEDTOOLS.out.versions)
 
-    /*ch_faidx.view()
-    ch_intervals.view()
-    ch_reference.view()
-    ALIGN.out.mbam_bai.view()
-    */
+
     // expand channel across bed regions for variant calling multi-threading
     ch_bam_bai_bed_fasta_fai = ALIGN.out.mbam_bai
         .combine(ch_intervals, by: 0)

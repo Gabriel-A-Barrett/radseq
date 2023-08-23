@@ -27,7 +27,7 @@ workflow BAM_VARIANT_CALLING_FREEBAYES {
 
     ch_vcfsort_tbi = ch_vcfsort
         .join (ch_tbi)
-        .map { meta, vcf, tbi ->
+        .map { meta, vcf, tbi -> 
             tuple( [id:meta.id, single_end:meta.single_end, ref_id:meta.ref_id], vcf, tbi  )
         }.groupTuple(by:0)
     

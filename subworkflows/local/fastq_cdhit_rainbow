@@ -27,7 +27,7 @@ workflow CDHIT_RAINBOW {
     ch_versions = Channel.empty()
 
     // perform any necessary trimming 
-    def perf_reads = params.need_to_trim_fastq ? TRIM_FASTP(reads, [[],[]], true, false, false).reads : reads 
+    def perf_reads = params.need_to_trim_fastq ? TRIM_FASTP(reads, [[],[]], true, false, false).reads : reads
 
     // deduplicate forward reads
     ch_uniq_forwardreads = PREPARE_FORWARD_READS (perf_reads, sequence_type).indv_uniq_seqs

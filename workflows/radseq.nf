@@ -149,11 +149,6 @@ workflow RADSEQ {
         ).intervals
     ch_versions = ch_versions.mix(BAM_INTERVALS_BEDTOOLS.out.versions)
 
-    ALIGN.out.mbam_bai.view()
-    ch_intervals.view()
-    ch_reference.view()
-    ch_faidx.view()
-
     // expand channel across bed regions for variant calling multi-threading
     ch_bam_bai_bed_fasta_fai = ALIGN.out.mbam_bai
         .combine(ch_intervals, by: 0)
@@ -168,7 +163,7 @@ workflow RADSEQ {
             ],
             bam, bai, file(bed), fasta, fai]
         }
-    ch_bam_bai_bed_fasta_fai.view()
+    ch_bam_bai_bed_fasta_fai
 
     //
     // SUBWORKFLOW: freebayes parallel variant calling

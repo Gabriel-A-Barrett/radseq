@@ -10,8 +10,6 @@ workflow BAM_MERGE_INDEX_SAMTOOLS {
     main:
     ch_versions = Channel.empty()
 
-    bam.view()
-
     ch_bam_to_merge = bam.map { WorkflowRadseq.addRefIdToChannels(params, it) }.groupTuple()
 
     MERGE_BAM(ch_bam_to_merge, fasta, fai)

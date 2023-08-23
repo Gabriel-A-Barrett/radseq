@@ -36,8 +36,8 @@ workflow CDHIT_RAINBOW {
     // creates a shared meta.id to condense file paths into
     ch_combine_unique_reads = ch_uniq_forwardreads.map { WorkflowRadseq.groupMetaID(it) }.groupTuple()
  
-    def minReadDepth_WithinIndividual = params.minreaddepth_withinindividualList ?: [4,5]
-    def minReadDepth_BetweenIndividual = params.minreaddepth_betweenindividualList ?: [4,5]
+    def minReadDepth_WithinIndividual = params.minreaddepth_withinindividual?.toString().split(',') as List ?: [4,5]
+    def minReadDepth_BetweenIndividual = params.minreaddepth_betweenindividual?.toString().split(',') as List ?: [4,5]
 
     // Combine forward reads across individuals
     ch_uniq_full_fasta = COMBINE_UNIQUE_READS (ch_combine_unique_reads.first(), sequence_type, Channel.value(minReadDepth_WithinIndividual), Channel.value(minReadDepth_BetweenIndividual)).uniq_reads

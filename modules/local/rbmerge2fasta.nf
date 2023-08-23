@@ -21,7 +21,7 @@ process RBMERGE2FASTA {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    def prefix = task.ext.prefix ?: "${meta.id}" + '_' + "${meta.ref_id}"
     """
 	LENGTH1=\$(cut -f3 ${rbdiv} | awk '(NR==1||length<shortest){shortest=length} END {print shortest}')
 	LENGTH=\$((\$LENGTH1 * 11 / 10))

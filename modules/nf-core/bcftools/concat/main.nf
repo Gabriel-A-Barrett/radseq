@@ -1,5 +1,5 @@
 process BCFTOOLS_CONCAT {
-    tag "$meta.id"
+    tag "${meta.id}_${meta.ref_id}" 
     label 'process_medium'
 
     conda "bioconda::bcftools=1.17"
@@ -19,7 +19,7 @@ process BCFTOOLS_CONCAT {
 
     script:
     def args = task.ext.args   ?: ''
-    prefix   = task.ext.prefix ?: "${meta.id}"
+    prefix   = task.ext.prefix ?: "${meta.id}" + '_' + "${meta.ref_id}"
     """
     bcftools concat \\
         --output ${prefix}.vcf.gz \\

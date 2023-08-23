@@ -10,7 +10,9 @@ workflow BAM_MERGE_INDEX_SAMTOOLS {
     main:
     ch_versions = Channel.empty()
 
-    ch_bam_to_merge = bam.map { groupMetaREFID(it) }.groupTuple()
+    bam.view()
+
+    ch_bam_to_merge = bam.map { WorkflowRadseq.addRefIdToChannels(params, it) }.groupTuple()
 
     MERGE_BAM(ch_bam_to_merge, fasta, fai)
     
@@ -27,15 +29,3 @@ workflow BAM_MERGE_INDEX_SAMTOOLS {
         bam_bai = bam_bai
         versions = ch_versions
 }
-
-def groupMetaREFID(ArrayList channel) {
-        def meta = channel[0]
-        def paths = channel[1]
-        def metaf = [:] // initialize groovy map
-        metaf.id =  meta.id.split(/[^\p{L}]/)[0] // set id splits at the first number appearance and retains items to the left
-        metaf.single_end = meta.single_end
-        metaf.ref_id = meta.ref_id
-
-        [metaf, paths]
-    }
-

@@ -149,6 +149,10 @@ workflow RADSEQ {
         ).intervals
     ch_versions = ch_versions.mix(BAM_INTERVALS_BEDTOOLS.out.versions)
 
+    ALIGN.out.mbam_bai.view()
+    ch_intervals.view()
+    ch_reference.view()
+    ch_faidx.view()
 
     // expand channel across bed regions for variant calling multi-threading
     ch_bam_bai_bed_fasta_fai = ALIGN.out.mbam_bai
@@ -158,11 +162,14 @@ workflow RADSEQ {
         .map { meta, bam, bai, bed, fasta, fai -> 
             [[
                 id:           meta.id,
+                single_end:   meta.single_end,
                 interval:     bed.getName().tokenize( '.' )[0],
                 ref_id:       meta.ref_id
             ],
             bam, bai, file(bed), fasta, fai]
         }
+    ch_bam_bai_bed_fasta_fai.view()
+
     //
     // SUBWORKFLOW: freebayes parallel variant calling
     //
@@ -174,8 +181,7 @@ workflow RADSEQ {
 
     ch_vcf_tbi_fasta = ch_vcf
         .join(BAM_VARIANT_CALLING_FREEBAYES.out.tbi,by:0)
-        .join(ch_reference.map{meta,fasta -> [[id:meta.id, ref_id:meta.ref_id] ,fasta]}, by:0)
-
+        .join(ch_reference, by:0)
 
     //
     // SUBWORKFLOW: Apply RADseq Specific Filters (depth, missingness, allele counts)

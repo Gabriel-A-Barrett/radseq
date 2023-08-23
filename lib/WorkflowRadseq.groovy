@@ -51,6 +51,9 @@ class WorkflowRadseq {
         def meta = channel[0]
         def file = channel[1]
         def array = []
+        metaf.id = meta.id
+        metaf.single_end = meta.single_end
+        // fasta, fai, 
         // swtiched for two scenarios large and small channel
         if (channel.size() > 3) {
             // pair bam with correct index
@@ -70,22 +73,21 @@ class WorkflowRadseq {
                 metaf.ref_id = meta2.ref_id
             }
             array = [ metaf, file, index ] 
-        } else {
-            // impacts fasta, fai channels
+        
+        // subworkflow: fastq_bwa_index_mem
+        } else if (channel.size() > 2) {
+            def meta2 = channel[2]
             if (params.method == 'denovo') {
-                // pair d fasta
-                metaf.id = meta.id
-                metaf.single_end = meta.single_end
+                // pair fasta
                 if (file.toString().endsWith('.fasta')) {
                     metaf.ref_id = file.baseName.toString().tokenize('_')[1] + '_' + file.baseName.toString().tokenize('_')[2]
-                } else {
+                } else { // [meta, bam, bai]
                     metaf.ref_id = meta.ref_id
                 }
                 array = [ metaf, file ]
             } else {
                 // pair reference fasta
                 // have to include id, single_end, ref_id in meta for fai and fasta file
-                def meta2 = channel[2]
                 metaf.id = meta2.id.split(/[^\p{L}]/)[0]
                 metaf.single_end = meta2.single_end
                 if (file.toString().endsWith('.fasta')) {
@@ -95,7 +97,19 @@ class WorkflowRadseq {
                 }
                 array = [metaf, file]
             }
+        // merge bam , fasta, fai channels
+        } else if (channel.size() == 2) {
+            metaf.id =  meta.id.split(/[^\p{L}]/)[0] // set id splits at the first number appearance and retains items to the left
+            metaf.single_end = meta.single_end
+            metaf.ref_id = meta.ref_id
+            if (params.method == 'denovo') {
+                if (file.toString().endsWith('.fasta')) { 
+                    metaf.ref_id = file.baseName.toString().tokenize('_')[1] + '_' + file.baseName.toString().tokenize('_')[2]
+                }
+            }
+            array = [metaf, file]
         }
+        
     }
 
     //

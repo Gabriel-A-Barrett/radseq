@@ -24,10 +24,15 @@ workflow BAM_VARIANT_CALLING_FREEBAYES {
 
     ch_tbi = TABIX_TABIX1 (BCFTOOLS_SORT.out.vcf).tbi
     ch_versions = ch_versions.mix(TABIX_TABIX1.out.versions)
-    
-    ch_vcfsort.join (ch_tbi).map{meta,vcf,tbi->[[meta.id, meta.ref_id],vcf,tbi]}.groupTuple(by:0)
 
-    BCFTOOLS_CONCAT (ch_vcfsort.join (ch_tbi).map{meta,vcf,tbi->[[id:meta.id, ref_id:meta.ref_id],vcf,tbi]}.groupTuple(by:0))
+    ch_vcfsort_tbi = ch_vcfsort
+        .join (ch_tbi)
+        .map { meta, vcf, tbi ->
+            tuple( [id:meta.id, single_end:meta.single_end, ref_id:meta.ref_id], vcf, tbi  )
+        }.groupTuple(by:0)
+    
+
+    BCFTOOLS_CONCAT (ch_vcfsort_tbi)
     ch_versions = ch_versions.mix(BCFTOOLS_CONCAT.out.versions)
 
     ch_final_tbi = TABIX_TABIX2 (BCFTOOLS_CONCAT.out.vcf).tbi

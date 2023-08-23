@@ -44,7 +44,6 @@ workflow CDHIT_RAINBOW {
     ch_versions = ch_versions.mix(COMBINE_UNIQUE_READS.out.versions)
 
     new_ch = ch_uniq_full_fasta.map { WorkflowRadseq.addRefIdToChannels(params, it) }
-    new_ch.view()
 
     // write dummy quality scores for fastp
     ch_uniq_seqtk_fq = SEQTK_SEQ (new_ch).fastx

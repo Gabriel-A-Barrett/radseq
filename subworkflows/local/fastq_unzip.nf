@@ -12,7 +12,7 @@ workflow FASTQ_UNZIP {
         ch_fasta    = GUNZIP_FASTA ( [ [:], fasta ] ).gunzip
         ch_versions = ch_versions.mix(GUNZIP_FASTA.out.versions)
     } else {
-        ch_fasta    = Channel.fromPath(fasta)
+        ch_fasta    = Channel.fromPath(fasta).map{[ [:], it ]}
     }
 
     emit:

@@ -156,23 +156,42 @@ class WorkflowRadseq {
         def meta = bed[0]
         def inputLines = bed[1]
 
-        def outputFilePath  = inputLines.getParent() + '/split_bed_files'
+        def outputFilePath = inputLines.getParent() + '/split_bed_files'
         outputFilePath.mkdir()
         def outputFilePaths = []
 
+        def linesPerFile = params.splitNLines
+        def outputLines = []
+        def fileCounter = 0
+
         inputLines.eachLine { line ->
-            def fields = line.split('\t')
-            def chrom = fields[0]
-            def startPos = fields[1] as int
-            def endPos = fields[2] as int
+            outputLines << line
 
-            def outputFile = new File("${outputFilePath}/${chrom}_${startPos}_${endPos}.bed")
-            outputFile.write(line)
+            if (outputLines.size() == linesPerFile) {
+                def outputFile = new File("${outputFilePath}/split_${fileCounter}.bed")
+                outputFile.withWriter { writer ->
+                    outputLines.each { outputLine ->
+                        writer.writeLine(outputLine)
+                    }
+                }
+                outputFilePaths << outputFile
+                outputLines.clear()
+                fileCounter++
+            }
+        }
 
+        if (!outputLines.isEmpty()) {
+            def outputFile = new File("${outputFilePath}/split_${fileCounter}.bed")
+            outputFile.withWriter { writer ->
+                outputLines.each { outputLine ->
+                    writer.writeLine(outputLine)
+                }
+            }
             outputFilePaths << outputFile
         }
+
         return [meta, outputFilePaths]
-    } 
+    }
 
     //
     // Get workflow summary for MultiQC

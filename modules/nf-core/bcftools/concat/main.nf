@@ -1,6 +1,6 @@
 process BCFTOOLS_CONCAT {
     tag "${meta.id}_${meta.ref_id}" 
-    label 'process_medium'
+    label 'process_high'
 
     conda "bioconda::bcftools=1.17"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?

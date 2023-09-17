@@ -1,6 +1,6 @@
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_BAM } from '../../modules/nf-core/samtools/index/main.nf'
 include { GATK4_CREATESEQUENCEDICTIONARY       } from '../../modules/nf-core/gatk4/createsequencedictionary/main'
-
+include { SAMTOOLS_STATS                       } from '../../modules/nf-core/samtools/stats/main'
 
 include { FASTQ_BWA_INDEX_MEM                  } from '../local/fastq_bwa_index_mem'
 include { FASTQ_CREATE_UMI_CONSENSUS_FGBIO     } from '../nf-core/fastq_create_umi_consensus_fgbio/main.nf'
@@ -70,6 +70,7 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
             .mix(dedup_bam)
             .join(bai)
     }
+    
     bam_bai_fasta = bam_bai
         .map{meta,bam,bai ->
             [[id:meta.id.split(/[^\p{L}]/)[0],single_end:meta.single_end,ref_id:meta.ref_id], bam, bai]}
@@ -91,6 +92,32 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
 
     mbam_bai = BAM_MERGE_INDEX_SAMTOOLS (bam_bai_filtered.map{meta,bam,bai -> [meta, bam]}, fasta, fai).bam_bai
     ch_versions = ch_versions.mix(BAM_MERGE_INDEX_SAMTOOLS.out.versions)
+    
+    //
+    // Groovy function appends mismatch_rate and primary_paired to meta for filtering by .min{}
+    if (params.method == 'denovo' && params.only_use_best_reference) {
+        mbam_bai_fasta = mbam_bai.combine(fasta, by: [0])
+
+        SAMTOOLS_STATS ( mbam_bai_fasta )
+
+        mbam_bai = mbam_bai.join(SAMTOOLS_STATS.out.stats, by:0)
+            .map {
+                WorkflowRadseq.selectBestPsuedoReference(it[0],it[1],it[2],it[3])
+            }
+            .min{it[0].mismatch_error}
+            .map { meta, mbam, bai -> 
+                def metaf = [:]
+                metaf.id = meta.id
+                metaf.single_end = meta.single_end
+                metaf.ref_id = meta.ref_id
+
+                return [metaf, mbam, bai]
+            }
+    }
+
+        //.map {
+        //    WorkflowRadseq.selectBestPsuedoReference(it)
+        //}
 
     emit:
     bam      = bam_bai_filtered.map{meta,bam,bai -> [meta, bam]}

@@ -3,6 +3,8 @@
 //
 import nextflow.Nextflow
 import groovy.json.JsonSlurper
+import java.nio.file.Path
+import java.nio.file.Paths
 
 class WorkflowRadseq {
 
@@ -112,7 +114,35 @@ class WorkflowRadseq {
         
     }
 
-    //
+    public static ArrayList selectBestPsuedoReference(meta, merged_bam, merged_bam_bai, merged_bam_stats) {
+        def results = []
+        def metaf = [:]
+        metaf.id = meta.id
+        metaf.single_end = meta.single_end
+        metaf.ref_id = meta.ref_id
+
+        
+        def mismatch_error_pattern = /SN\s+mismatches:\s+(\d+)/
+        def primary_paired_pattern = /SN\s+reads mapped and paired:\s+(\d+)/
+        
+        def lines = merged_bam_stats.text.readLines()
+        lines.each { line ->
+            def mismatch_matcher = line =~ mismatch_error_pattern
+            if (mismatch_matcher) {
+                def currentMismatchError = mismatch_matcher[0][1].toFloat()
+                metaf.mismatch_error = currentMismatchError
+            }
+            
+            def primary_paired_matcher = line =~ primary_paired_pattern
+            if (primary_paired_matcher) {
+                def primary_paired = primary_paired_matcher[0][1].toFloat()
+                metaf.primary_paired = primary_paired
+            }
+        }
+        
+        return [metaf, merged_bam, merged_bam_bai]
+    }
+    
     // Function to check alignment rate
     //
     public static ArrayList getBamPercentMapped(params, flagstat_log) {

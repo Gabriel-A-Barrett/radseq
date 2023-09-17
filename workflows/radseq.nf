@@ -163,7 +163,6 @@ workflow RADSEQ {
             ],
             bam, bai, file(bed), fasta, fai]
         }
-    ch_bam_bai_bed_fasta_fai
 
     //
     // SUBWORKFLOW: freebayes parallel variant calling
@@ -182,8 +181,9 @@ workflow RADSEQ {
     // SUBWORKFLOW: Apply RADseq Specific Filters (depth, missingness, allele counts)
     //
     VCF_BCFTOOLS_RADSEQ_FILTERS ( 
-        ch_vcf_tbi_fasta,)
-
+        ch_vcf_tbi_fasta
+        )
+    
     //
     // MODULE: Run FastQC
     //
@@ -212,7 +212,7 @@ workflow RADSEQ {
     ch_multiqc_files = ch_multiqc_files.mix(ALIGN.out.stats.collect{it[1]}.ifEmpty([]))
     ch_multiqc_files = ch_multiqc_files.mix(ALIGN.out.flagstat.collect{it[1]}.ifEmpty([]))
     ch_multiqc_files = ch_multiqc_files.mix(ALIGN.out.idxstats.collect{it[1]}.ifEmpty([]))
-    ch_multiqc_files = ch_multiqc_files.mix(BAM_VARIANT_CALLING_FREEBAYES.out.stats.collect{it[1]}.ifEmpty([]))
+    //ch_multiqc_files = ch_multiqc_files.mix(BAM_VARIANT_CALLING_FREEBAYES.out.stats.collect{it[1]}.ifEmpty([]))
 
     MULTIQC (
         ch_multiqc_files.collect(),

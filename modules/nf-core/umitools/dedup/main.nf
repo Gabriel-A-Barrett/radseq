@@ -27,14 +27,14 @@ process UMITOOLS_DEDUP {
     prefix = task.ext.prefix ?: "${meta.id}"
     def paired = meta.single_end ? "" : "--paired"
     stats = get_output_stats ? "--output-stats ${prefix}" : ""
-    if ("$bam" == "${prefix}.bam") error "Input and output names are the same, set prefix in module configuration to disambiguate!"
+    if ("$bam" == "${prefix}.dedup.bam") error "Input and output names are the same, set prefix in module configuration to disambiguate!"
 
     if (!(args ==~ /.*--random-seed.*/)) {args += " --random-seed=100"}
     """
     PYTHONHASHSEED=0 umi_tools \\
         dedup \\
         -I $bam \\
-        -S ${prefix}.bam \\
+        -S ${prefix}.dedup.bam \\
         -L ${prefix}.log \\
         $stats \\
         $paired \\

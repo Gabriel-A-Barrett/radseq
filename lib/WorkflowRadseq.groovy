@@ -114,6 +114,18 @@ class WorkflowRadseq {
         
     }
 
+    public static ArrayList subsetSamplesForPsuedoReference(params) {
+        def grouped = [:]
+        new File(params.popmap).eachLine { line ->
+            def (id, population) = line.split(/\s+/)
+            grouped[population] = grouped.get(population, []) << id
+        }
+        def subset = []
+        grouped.each { population, id ->
+            subset += ids.take(5).collect { "$it $population" }
+        }
+    }
+
     public static ArrayList selectBestPsuedoReference(meta, merged_bam, merged_bam_bai, merged_bam_stats) {
         def results = []
         def metaf = [:]

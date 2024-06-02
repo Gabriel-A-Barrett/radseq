@@ -20,13 +20,17 @@ include { RBMERGE2FASTA as WRITE_FASTA } from '../../modules/local/rbmerge2fasta
 
 workflow CDHIT_RAINBOW {
     take:
-    reads // [[:], [1.fq.gz, 2.fq.gz]]
+    reads // [[:], [1.fq.gz, 2.fq.gz]] 
     sequence_type // value exe. 'PE' or 'ROP'
 
     main:
     ch_versions = Channel.empty()
 
-    // perform any necessary trimming 
+    // subset samples
+
+    // provide a pool of samples with good number of reads
+
+    // perform any necessary trimming i.e remove umi & barcode sequences 
     def perf_reads = params.need_to_trim_fastq ? TRIM_FASTP(reads, [[],[]], true, false, false).reads : reads
 
     // deduplicate forward reads

@@ -30,11 +30,10 @@ workflow BAM_VARIANT_CALLING_MPILEUP {
             cram, crai, file(bed), fasta]
         }
 
-    ch_cram_crai_bed_fasta.view()
-
     BCFTOOLS_MPILEUP(ch_cram_crai_bed_fasta, keep_bcftools_mpileup)
+    versions = versions.mix(BCFTOOLS_MPILEUP.out.versions)
 
-    //versions = versions.mix(BCFTOOLS_MPILEUP.out.versions)
+    
 
     emit:
 

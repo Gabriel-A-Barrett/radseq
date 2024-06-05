@@ -12,8 +12,8 @@ process BCFTOOLS_MPILEUP {
     val save_mpileup
 
     output:
-    tuple val(meta), path("*vcf.gz")     , emit: vcf
-    tuple val(meta), path("*vcf.gz.tbi") , emit: tbi
+    tuple val(meta), path("*bcf.gz")     , emit: bcf
+    tuple val(meta), path("*bcf.gz.tbi") , emit: tbi
     tuple val(meta), path("*stats.txt")  , emit: stats
     tuple val(meta), path("*.mpileup.gz"), emit: mpileup, optional: true
     path  "versions.yml"                 , emit: versions
@@ -30,8 +30,6 @@ process BCFTOOLS_MPILEUP {
     def bgzip_mpileup = save_mpileup ? "bgzip ${prefix}.mpileup" : ""
     def intervals = intervals ? "-T ${intervals}" : "" // chr:from-to
     """
-    echo "${meta.id}" > sample_name.list
-
     bcftools \\
         mpileup \\
         --fasta-ref $fasta \\
@@ -39,15 +37,14 @@ process BCFTOOLS_MPILEUP {
         $bam \\
         $intervals \\
         $mpileup \\
-        | bcftools call --output-type v $args2 \\
-        | bcftools reheader --samples sample_name.list \\
-        | bcftools view --output-file ${prefix}.vcf.gz --output-type z $args3
+        | bcftools call --output-type u $args2 \\
+        | bcftools view --output-file ${prefix}.bcf.gz --output-type b $args3
 
     $bgzip_mpileup
 
-    tabix -p vcf -f ${prefix}.vcf.gz
+    tabix -p vcf -f ${prefix}.bcf.gz
 
-    bcftools stats ${prefix}.vcf.gz > ${prefix}.bcftools_stats.txt
+    bcftools stats ${prefix}.bcf.gz > ${prefix}.bcftools_stats.txt
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

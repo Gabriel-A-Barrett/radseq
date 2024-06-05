@@ -162,20 +162,6 @@ workflow RADSEQ {
         params.max_read_coverage_to_split
         ).intervals
     ch_versions = ch_versions.mix(BAM_INTERVALS_BEDTOOLS.out.versions)
-
-    // expand channel across bed regions for variant calling multi-threading
-    ch_cram_crai_bed_fasta_fai = ALIGN.out.mcram_crai
-        .combine(ch_intervals, by: [0])
-        .combine(ch_reference, by: [0])
-        .map { meta, cram, crai, bed, fasta -> 
-            [[
-                id:           meta.id,
-                single_end:   meta.single_end,
-                interval:     bed.getName().tokenize( '.' )[0],
-                ref_id:       meta.ref_id
-            ],
-            cram, crai, file(bed), fasta]
-        }
     
     //
     // SUBWORKFLOW variant calling with bcftools
@@ -185,7 +171,7 @@ workflow RADSEQ {
         ALIGN.out.mcram_crai,
         ch_reference,
         ch_intervals,
-        channel.from(params.keep_bcftools_mpileup)
+        params.keep_bcftools_mpileup
     )
 
     //

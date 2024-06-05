@@ -42,6 +42,7 @@ include { BAM_INTERVALS_BEDTOOLS                 } from '../subworkflows/local/b
 include { BAM_VARIANT_CALLING_FREEBAYES          } from '../subworkflows/local/bam_variant_calling_freebayes'
 include { FASTQ_UNZIP                            } from '../subworkflows/local/fastq_unzip.nf'
 include { VCF_BCFTOOLS_RADSEQ_FILTERS            } from '../subworkflows/local/vcf_bcftools_radseq_filters.nf'
+include { BAM_VARIANT_CALLING_MPILEUP           } from '../subworkflows/local/bam_variant_calling_mpileup/main'
 
 /*
 ========================================================================================
@@ -140,27 +141,29 @@ workflow RADSEQ {
     //
     // SUBWORKFLOW: generate fasta indexes, align input files, dedup reads, index bam, calculate statistics
     //      if denovo and paired then pass length_stats to bwa mem
-    ch_bam_bai_fasta = ALIGN (
+    //
+    ALIGN (
         PROCESS_RAD.out.trimmed_reads, 
         ch_reference, 
         params.sequence_type, 
         PROCESS_RAD.out.read_lengths
-        ).cram_crai
+        )
     ch_versions = ch_versions.mix(ALIGN.out.versions)
 
     //
     // SUBWORKFLOW: freebayes multithreading based on read coverage or genome samtools faidx index
     //
-    /*ch_intervals = BAM_INTERVALS_BEDTOOLS (
-        ALIGN.out.bam,
+    //
+    ch_intervals = BAM_INTERVALS_BEDTOOLS (
+        ALIGN.out.cram,
         ch_faidx,
         PROCESS_RAD.out.read_lengths,
         params.max_read_coverage_to_split
         ).intervals
     ch_versions = ch_versions.mix(BAM_INTERVALS_BEDTOOLS.out.versions)
-
+    
     // expand channel across bed regions for variant calling multi-threading
-    ch_bam_bai_bed_fasta_fai = ALIGN.out.mbam_bai
+    ch_cram_crai_bed_fasta_fai = ALIGN.out.cram_crai
         .combine(ch_intervals, by: 0)
         .combine(ch_reference, by: [0])
         .combine(ch_faidx, by: [0])
@@ -173,11 +176,17 @@ workflow RADSEQ {
             ],
             bam, bai, file(bed), fasta, fai]
         }
+    */
+
+    /*BAM_VARIANT_CALLING_MPILEUP ( 
+        ALIGN.out.cram_crai_fasta,
+        params.keep_bcftools_mpileup
+    )*/
 
     //
     // SUBWORKFLOW: freebayes parallel variant calling
     //
-    ch_vcf = BAM_VARIANT_CALLING_FREEBAYES (
+    /*ch_vcf = BAM_VARIANT_CALLING_FREEBAYES (
         ch_bam_bai_bed_fasta_fai,
         true
     ).vcf

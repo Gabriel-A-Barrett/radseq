@@ -30,8 +30,9 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
     }
 
     // remove files that didn't make the threshold in params
-    cram_crai_fasta.join(ch_percent_mapped, by: [0]).map { meta, cram, crai, fasta, mapped, pass -> if (pass) [meta,cram,crai] }.set { cram_crai_filtered }
+    cram_crai_fasta.join(ch_percent_mapped, by: [0]).map { meta, cram, crai, fasta, mapped, pass -> if (pass) [meta,cram,crai,fasta] }.set { cram_crai_fasta_filtered }
 
+    /*
     mcram_crai = CRAM_MERGE_INDEX_SAMTOOLS (cram_crai_filtered.map{meta,cram,crai -> [meta, cram]}, fasta, fai).cram_crai
     ch_versions = ch_versions.mix( CRAM_MERGE_INDEX_SAMTOOLS.out.versions )
 
@@ -56,20 +57,19 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
 
                 return [metaf, mcram, crai]
             }
-    }
+    }*/
 
         //.map {
         //    WorkflowRadseq.selectBestPsuedoReference(it)
         //}
 
     emit:
-    //cram      = cram_crai_filtered.map{meta,cram,crai -> [meta, cram]}
-    cram_crai    = FASTQ_ALIGN_BWA.out.cram_crai
-    ch_cram_crai = FASTQ_ALIGN_BWA.out.cram_crai_fasta
-    //mcram_crai
-    stats        = FASTQ_ALIGN_BWA.out.stats
-    flagstat     = FASTQ_ALIGN_BWA.out.flagstat
-    idxstats     = FASTQ_ALIGN_BWA.out.idxstats
+    cram            = cram_crai_filtered.map{meta,cram,crai -> [meta, cram]}
+    cram_crai       = FASTQ_ALIGN_BWA.out.cram_crai
+    cram_crai_fasta = cram_crai_fasta_filtered
+    stats           = FASTQ_ALIGN_BWA.out.stats
+    flagstat        = FASTQ_ALIGN_BWA.out.flagstat
+    idxstats        = FASTQ_ALIGN_BWA.out.idxstats
     
     versions = ch_versions
 }

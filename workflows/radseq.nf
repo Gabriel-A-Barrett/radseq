@@ -144,14 +144,15 @@ workflow RADSEQ {
     //
     ALIGN (
         PROCESS_RAD.out.trimmed_reads, 
-        ch_reference, 
+        ch_reference,
+        ch_faidx,
         params.sequence_type, 
         PROCESS_RAD.out.read_lengths
         )
     ch_versions = ch_versions.mix(ALIGN.out.versions)
 
     //
-    // SUBWORKFLOW: freebayes multithreading based on read coverage or genome samtools faidx index
+    // SUBWORKFLOW: write interval files based on read coverage or genome samtools faidx index
     //
     //
     ch_intervals = BAM_INTERVALS_BEDTOOLS (
@@ -161,27 +162,31 @@ workflow RADSEQ {
         params.max_read_coverage_to_split
         ).intervals
     ch_versions = ch_versions.mix(BAM_INTERVALS_BEDTOOLS.out.versions)
-    
+
     // expand channel across bed regions for variant calling multi-threading
-    ch_cram_crai_bed_fasta_fai = ALIGN.out.cram_crai
-        .combine(ch_intervals, by: 0)
+    ch_cram_crai_bed_fasta_fai = ALIGN.out.mcram_crai
+        .combine(ch_intervals, by: [0])
         .combine(ch_reference, by: [0])
-        .combine(ch_faidx, by: [0])
-        .map { meta, bam, bai, bed, fasta, fai -> 
+        .map { meta, cram, crai, bed, fasta -> 
             [[
                 id:           meta.id,
                 single_end:   meta.single_end,
                 interval:     bed.getName().tokenize( '.' )[0],
                 ref_id:       meta.ref_id
             ],
-            bam, bai, file(bed), fasta, fai]
+            cram, crai, file(bed), fasta]
         }
-    */
+    
+    //
+    // SUBWORKFLOW variant calling with bcftools
+    //
 
-    /*BAM_VARIANT_CALLING_MPILEUP ( 
-        ALIGN.out.cram_crai_fasta,
-        params.keep_bcftools_mpileup
-    )*/
+    BAM_VARIANT_CALLING_MPILEUP ( 
+        ALIGN.out.mcram_crai,
+        ch_reference,
+        ch_intervals,
+        channel.from(params.keep_bcftools_mpileup)
+    )
 
     //
     // SUBWORKFLOW: freebayes parallel variant calling

@@ -14,16 +14,16 @@ workflow BAM_MERGE_INDEX_SAMTOOLS {
 
     MERGE_BAM(ch_bam_to_merge, fasta, fai)
     
-    INDEX_MERGE_BAM(MERGE_BAM.out.bam)
+    INDEX_MERGE_BAM(MERGE_BAM.out.cram)
 
-    bam_bai = MERGE_BAM.out.bam
-        .join(INDEX_MERGE_BAM.out.bai, by: [0])
+    mcram_crai = MERGE_BAM.out.cram
+        .join(INDEX_MERGE_BAM.out.crai, by: [0])
 
     // Gather versions of all tools used
     ch_versions = ch_versions.mix(INDEX_MERGE_BAM.out.versions.first())
     ch_versions = ch_versions.mix(MERGE_BAM.out.versions.first())
 
     emit:
-        bam_bai = bam_bai
+        mcram_crai
         versions = ch_versions
 }

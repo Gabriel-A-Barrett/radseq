@@ -1,12 +1,15 @@
+include { BWA_INDEX                              } from '../../modules/nf-core/bwa/index'
 include { FASTQ_ALIGN_BWA                        } from '../nf-core/fastq_align_bwa/main'
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_CRAM  } from '../../modules/nf-core/samtools/index/main'
-include { BWA_INDEX                              } from '../../modules/nf-core/bwa/index'
+include { BAM_MERGE_INDEX_SAMTOOLS as CRAM_MERGE_INDEX_SAMTOOLS } from '../local/bam_merge_index_samtools'
+
 
 workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
 
     take:
     reads
     fasta
+    fai
     sequence_type
     read_lengths
 
@@ -31,9 +34,8 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
 
     // remove files that didn't make the threshold in params
     cram_crai_fasta.join(ch_percent_mapped, by: [0]).map { meta, cram, crai, fasta, mapped, pass -> if (pass) [meta,cram,crai,fasta] }.set { cram_crai_fasta_filtered }
-
-    /*
-    mcram_crai = CRAM_MERGE_INDEX_SAMTOOLS (cram_crai_filtered.map{meta,cram,crai -> [meta, cram]}, fasta, fai).cram_crai
+    
+    mcram_crai = CRAM_MERGE_INDEX_SAMTOOLS (cram_crai_fasta_filtered.map{meta,cram,crai,fasta -> [meta, cram]}, fasta, fai).mcram_crai
     ch_versions = ch_versions.mix( CRAM_MERGE_INDEX_SAMTOOLS.out.versions )
 
     //
@@ -57,16 +59,17 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
 
                 return [metaf, mcram, crai]
             }
-    }*/
+    }
 
         //.map {
         //    WorkflowRadseq.selectBestPsuedoReference(it)
         //}
 
     emit:
-    cram            = cram_crai_filtered.map{meta,cram,crai -> [meta, cram]}
+    cram            = cram_crai_fasta_filtered.map{meta,cram,crai,fasta -> [meta, cram]}
     cram_crai       = FASTQ_ALIGN_BWA.out.cram_crai
     cram_crai_fasta = cram_crai_fasta_filtered
+    mcram_crai
     stats           = FASTQ_ALIGN_BWA.out.stats
     flagstat        = FASTQ_ALIGN_BWA.out.flagstat
     idxstats        = FASTQ_ALIGN_BWA.out.idxstats

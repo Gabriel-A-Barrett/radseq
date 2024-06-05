@@ -8,7 +8,7 @@ process BCFTOOLS_MPILEUP {
         'biocontainers/bcftools:1.20--h8b25389_0' }"
 
     input:
-    tuple val(meta), path(bam), path(index) path(fasta), path(intervals)
+    tuple val(meta), path(bam), path(index), path(intervals), path(fasta)
     val save_mpileup
 
     output:

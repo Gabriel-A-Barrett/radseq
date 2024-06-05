@@ -8,17 +8,33 @@ include { BCFTOOLS_MPILEUP                           } from '../../../modules/nf
 
 workflow BAM_VARIANT_CALLING_MPILEUP {
     take:
-    cram_crai_fasta      // channel: [mandatory] [ meta, cram, crai,]
+    cram_crai      // channel: [mandatory] [ meta, cram, crai,]
+    fasta
+    intervals
     keep_bcftools_mpileup
 
     main:
     versions = Channel.empty()
-
     
-    
-    BCFTOOLS_MPILEUP(cram_crai_fasta, keep_bcftools_mpileup)
+    // expand channel across bed regions for variant calling multi-threading
+    ch_cram_crai_bed_fasta = cram_crai
+        .combine(intervals, by: [0])
+        .combine(fasta, by: [0])
+        .map { meta, cram, crai, bed, fasta -> 
+            [[
+                id:           meta.id,
+                single_end:   meta.single_end,
+                interval:     bed.getName().tokenize( '.' )[0],
+                ref_id:       meta.ref_id
+            ],
+            cram, crai, file(bed), fasta]
+        }
 
-    versions = versions.mix(BCFTOOLS_MPILEUP.out.versions)
+    ch_cram_crai_bed_fasta.view()
+
+    BCFTOOLS_MPILEUP(ch_cram_crai_bed_fasta, keep_bcftools_mpileup)
+
+    //versions = versions.mix(BCFTOOLS_MPILEUP.out.versions)
 
     emit:
 

@@ -1,117 +1,60 @@
-include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_BAM } from '../../modules/nf-core/samtools/index/main.nf'
-include { GATK4_CREATESEQUENCEDICTIONARY       } from '../../modules/nf-core/gatk4/createsequencedictionary/main'
-include { SAMTOOLS_STATS                       } from '../../modules/nf-core/samtools/stats/main'
-
-include { FASTQ_BWA_INDEX_MEM                  } from '../local/fastq_bwa_index_mem'
-include { FASTQ_CREATE_UMI_CONSENSUS_FGBIO     } from '../nf-core/fastq_create_umi_consensus_fgbio/main.nf'
-include { BAM_UMITOOLS_DEDUP                   } from '../local/bam_umitools_dedup'
-include { BAM_STATS_SAMTOOLS                   } from '../nf-core/bam_stats_samtools/main.nf'
-include { BAM_MERGE_INDEX_SAMTOOLS             } from '../local/bam_merge_index_samtools'
-
+include { FASTQ_ALIGN_BWA                        } from '../nf-core/fastq_align_bwa/main'
+include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_CRAM  } from '../../modules/nf-core/samtools/index/main'
+include { BWA_INDEX                              } from '../../modules/nf-core/bwa/index'
 
 workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
 
     take:
     reads
     fasta
-    fai
     sequence_type
     read_lengths
 
     main:
     ch_versions = Channel.empty()
 
-    if (params.dedup_tool.contains('fgbio')) {
+    BWA_INDEX ( fasta )
 
-        // split up based on umi's
-        reads2umi = reads
-            .branch { meta, reads ->
-                umi: meta.umi_barcodes == true
-                no_umi: meta.umi_barcodes == false
-            }
+    ch_reads_index_fasta = fasta
+        .join(BWA_INDEX.out.index, by: [0])
+        .combine(reads)
+        .map { meta, fasta, index, meta2, reads ->
+        [[id:meta2.id, single_end:meta2.single_end, ref_id:meta.ref_id], reads, index, fasta]
+        }
 
-        dict = GATK4_CREATESEQUENCEDICTIONARY ( fasta ).dict
+    cram_crai_fasta = FASTQ_ALIGN_BWA ( ch_reads_index_fasta, fasta, sequence_type, read_lengths ).cram_crai_fasta
 
-        FASTQ_CREATE_UMI_CONSENSUS_FGBIO ( reads2umi.umi, fasta, [], dict, params.umi_strategy, params.aligner, params.duplex, read_lengths )
-        dedup_bam = FASTQ_CREATE_UMI_CONSENSUS_FGBIO.out.mappedconsensusbam
-
-        // grab bwa indices from subworkflow
-        bwaindex = FASTQ_CREATE_UMI_CONSENSUS_FGBIO.out.bwaindex
-
-        bam = FASTQ_BWA_INDEX_MEM ( reads2umi.no_umi, fasta, sequence_type, read_lengths ).bam
-
-        // INDEX
-        bai = SAMTOOLS_INDEX_BAM (dedup_bam.mix(bam)).bai
-        ch_versions = ch_versions.mix(SAMTOOLS_INDEX_BAM.out.versions)
-
-        bam_bai = bam
-            .mix(dedup_bam)
-            .join(bai)
-
-    } else {
-
-        //alignments happen before umi
-        bam = FASTQ_BWA_INDEX_MEM ( reads, fasta, sequence_type, read_lengths ).bam
-
-        bam2umi = bam
-            .branch { meta, reads ->
-                umi: meta.umi_barcodes == true
-                no_umi: meta.umi_barcodes == false
-            }
-
-        dedup_bam = BAM_UMITOOLS_DEDUP ( bam2umi.umi ).consensusbam
-
-        // INDEX
-        bai = SAMTOOLS_INDEX_BAM (dedup_bam.mix(bam2umi.no_umi)).bai
-        ch_versions = ch_versions.mix(SAMTOOLS_INDEX_BAM.out.versions)
-
-        // Append no umi's
-        bam_bai = bam2umi.no_umi
-            .mix(dedup_bam)
-            .join(bai)
-    }
-    
-    bam_bai_fasta = bam_bai
-        .map{meta,bam,bai ->
-            [[id:meta.id.split(/[^\p{L}]/)[0],single_end:meta.single_end,ref_id:meta.ref_id], bam, bai]}
-        .combine(fasta, by: [0])
-        .map{meta,bam,bai,fasta ->
-            [[id:bam.getSimpleName(),single_end:meta.single_end,ref_id:meta.ref_id], bam, bai, fasta]}
-
-    // get statistics
-    BAM_STATS_SAMTOOLS (bam_bai_fasta)
-    ch_versions = ch_versions.mix(BAM_STATS_SAMTOOLS.out.versions)
-
-    // apply groovy function to add mapping percent to channel
+    // add per-individual mapping rates to end of channel
     if (params.check_alignment_mapping_rates) {
-        BAM_STATS_SAMTOOLS.out.flagstat.map { WorkflowRadseq.getBamPercentMapped(params,it) }.set{ ch_percent_mapped }
+        FASTQ_ALIGN_BWA.out.flagstat.map { WorkflowRadseq.getCramPercentMapped(params,it) }.set{ ch_percent_mapped }
     }
 
     // remove files that didn't make the threshold in params
-    bam_bai_fasta.join(ch_percent_mapped, by: [0]).map { meta, bam, bai, fasta, mapped, pass -> if (pass) [meta,bam,bai] }.set { bam_bai_filtered }
+    cram_crai_fasta.join(ch_percent_mapped, by: [0]).map { meta, cram, crai, fasta, mapped, pass -> if (pass) [meta,cram,crai] }.set { cram_crai_filtered }
 
-    mbam_bai = BAM_MERGE_INDEX_SAMTOOLS (bam_bai_filtered.map{meta,bam,bai -> [meta, bam]}, fasta, fai).bam_bai
-    ch_versions = ch_versions.mix(BAM_MERGE_INDEX_SAMTOOLS.out.versions)
-    
+    mcram_crai = CRAM_MERGE_INDEX_SAMTOOLS (cram_crai_filtered.map{meta,cram,crai -> [meta, cram]}, fasta, fai).cram_crai
+    ch_versions = ch_versions.mix( CRAM_MERGE_INDEX_SAMTOOLS.out.versions )
+
     //
     // Groovy function appends mismatch_rate and primary_paired to meta for filtering by .min{}
+    //
     if (params.method == 'denovo' && params.only_use_best_reference) {
-        mbam_bai_fasta = mbam_bai.combine(fasta, by: [0])
+        mcram_crai_fasta = mcram_crai.combine(fasta, by: [0])
 
-        SAMTOOLS_STATS ( mbam_bai_fasta )
+        SAMTOOLS_STATS ( mcram_crai_fasta )
 
-        mbam_bai = mbam_bai.join(SAMTOOLS_STATS.out.stats, by:0)
+        mcram_crai = mcram_crai.join(SAMTOOLS_STATS.out.stats, by:0)
             .map {
                 WorkflowRadseq.selectBestPsuedoReference(it[0],it[1],it[2],it[3])
             }
             .min{it[0].mismatch_error}
-            .map { meta, mbam, bai -> 
+            .map { meta, mcram, crai -> 
                 def metaf = [:]
                 metaf.id = meta.id
                 metaf.single_end = meta.single_end
                 metaf.ref_id = meta.ref_id
 
-                return [metaf, mbam, bai]
+                return [metaf, mcram, crai]
             }
     }
 
@@ -120,12 +63,13 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
         //}
 
     emit:
-    bam      = bam_bai_filtered.map{meta,bam,bai -> [meta, bam]}
-    bam_bai
-    mbam_bai
-    stats    = BAM_STATS_SAMTOOLS.out.stats
-    flagstat = BAM_STATS_SAMTOOLS.out.flagstat
-    idxstats = BAM_STATS_SAMTOOLS.out.idxstats
+    //cram      = cram_crai_filtered.map{meta,cram,crai -> [meta, cram]}
+    cram_crai    = FASTQ_ALIGN_BWA.out.cram_crai
+    ch_cram_crai = FASTQ_ALIGN_BWA.out.cram_crai_fasta
+    //mcram_crai
+    stats        = FASTQ_ALIGN_BWA.out.stats
+    flagstat     = FASTQ_ALIGN_BWA.out.flagstat
+    idxstats     = FASTQ_ALIGN_BWA.out.idxstats
     
     versions = ch_versions
 }

@@ -157,7 +157,7 @@ class WorkflowRadseq {
     
     // Function to check alignment rate
     //
-    public static ArrayList getBamPercentMapped(params, flagstat_log) {
+    public static ArrayList getCramPercentMapped(params, flagstat_log) {
         def percent_aligned = 0
         // 46 + 0 mapped (100.00% : N/A)
         def pattern = /primary\s+mapped\s+\((\d+\.\d+)%\s*:/

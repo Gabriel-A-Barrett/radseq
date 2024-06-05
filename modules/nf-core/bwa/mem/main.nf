@@ -8,23 +8,32 @@ process BWA_MEM {
         'quay.io/biocontainers/mulled-v2-fe8faa35dbf6dc65a0f7f5d4ea12e31a79f73e40:8110a70be2bfe7f75a2ea7f2a89cda4cc7732095-0' }"
 
     input:
-    tuple val(meta), path(reads), path(index)
-    val   sort_bam
+    tuple val(meta), path(reads), path(index), path(fasta)
     val   sequence_type
     val   lengths
 
     output:
-    tuple val(meta), path("*.bam"), emit: bam
-    path  "versions.yml"          , emit: versions
+    tuple val(meta), path("*.bam")  , emit: bam,    optional: true
+    tuple val(meta), path("*.cram") , emit: cram,   optional: true
+    tuple val(meta), path("*.csi")  , emit: csi,    optional: true
+    tuple val(meta), path("*.crai") , emit: crai,   optional: true
+    path  "versions.yml"            , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
-    def args =   task.ext.args      ?: ''
-    def args2 =  task.ext.args2     ?: ''
-    def args3 =  task.ext.args3     ?: ''
-    def prefix = task.ext.prefix    ?: "${meta.id}"
+    def args = task.ext.args   ?: ''
+    def args2 = task.ext.args2 ?: ''
+    def args3 = task.ext.args3 ?: ''
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    def extension = args3.contains("--output-fmt sam")   ? "sam" :
+                    args3.contains("--output-fmt cram")  ? "cram":
+                    args3.contains("-O cram")            ? "cram":
+                    args3.contains("-C")                 ? "cram":
+                    "bam"
+    def reference = fasta && extension=="cram"  ? "--reference ${fasta}" : ""
+    if (!fasta && extension=="cram") error "Fasta reference is required for CRAM output"
     if (sequence_type == 'PE' && params.method == 'denovo') {
         """
         INDEX=`find -L ./ -name "*.amb" | sed 's/.amb//'`
@@ -44,7 +53,7 @@ process BWA_MEM {
             \$INDEX \\
             $reads \\
             | samtools view $args2 \\
-            | samtools sort $args3 --threads $task.cpus -o ${prefix}.bam -
+            | samtools sort $args3 $reference --threads $task.cpus -o ${prefix}.${extension} -
 
 cat <<-END_VERSIONS > versions.yml
 "${task.process}":
@@ -63,7 +72,7 @@ END_VERSIONS
             \$INDEX \\
             $reads \\
             | samtools view $args2 \\
-            | samtools sort $args3 --threads $task.cpus -o ${prefix}.bam -
+            | samtools sort $args3 $reference --threads $task.cpus -o ${prefix}.${extension} -
 
 cat <<-END_VERSIONS > versions.yml
 "${task.process}":

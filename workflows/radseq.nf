@@ -88,6 +88,7 @@ workflow RADSEQ {
 
     // assign fasta channel based on method in config file
     switch ( params.method ) {
+        
         // assign ch_reference (input for aligning subworkflow) to the reference in the params
         case 'reference':
             //
@@ -97,31 +98,41 @@ workflow RADSEQ {
                 .combine(PROCESS_RAD.out.trimmed_reads.map{it[0]}.first())
                 .map{ WorkflowRadseq.addRefIdToChannels(params, it) }
             break
+        
         case 'denovo':
-            /* SUBWORKFLOW: Cluster READS after applying unique read thresholds within and among samples.
-            *   option to provide a list of minimum depth thresholds. See nextflow.config for more details*/
+
+            //
+            // SUBWORKFLOW: Cluster READS after applying unique read thresholds within and among samples.
+            //  option to provide a list of minimum depth thresholds. See nextflow.config for more details
+
             ch_reference = DENOVO (
                 INPUT_CHECK.out.reads, 
                 params.sequence_type // sequence type exe.: 'SE', 'PE', ''
             ).fasta
             ch_versions = ch_versions.mix(DENOVO.out.versions)
             break
+        
         default:
             exit 1, "unknown method: ${method} \n supported options:" + params.method_options
     }
 
     // nf-core module index reference for bedtools + freebayes
     if (params.faidx) {
+    
         ch_faidx = Channel.fromPath(params.faidx)
             .combine(PROCESS_RAD.out.trimmed_reads.map{it[0]}.first())
             .map{ WorkflowRadseq.addRefIdToChannels(params, it) }
+    
     } else {
+    
         ch_faidx = SAMTOOLS_FAIDX (
         ch_reference
         ).fai
             .combine(PROCESS_RAD.out.trimmed_reads.map{it[0]}.first())
             .map{ WorkflowRadseq.addRefIdToChannels(params, it) }
+
         ch_versions = ch_versions.mix(SAMTOOLS_FAIDX.out.versions)
+    
     }
 
     // embed function to have reference match bed and mbam_bai me
@@ -129,19 +140,18 @@ workflow RADSEQ {
     //
     // SUBWORKFLOW: generate fasta indexes, align input files, dedup reads, index bam, calculate statistics
     //      if denovo and paired then pass length_stats to bwa mem
-    ch_bam_bai = ALIGN (
+    ch_bam_bai_fasta = ALIGN (
         PROCESS_RAD.out.trimmed_reads, 
         ch_reference, 
-        ch_faidx,
         params.sequence_type, 
         PROCESS_RAD.out.read_lengths
-        ).bam_bai
+        ).cram_crai
     ch_versions = ch_versions.mix(ALIGN.out.versions)
 
     //
     // SUBWORKFLOW: freebayes multithreading based on read coverage or genome samtools faidx index
     //
-    ch_intervals = BAM_INTERVALS_BEDTOOLS (
+    /*ch_intervals = BAM_INTERVALS_BEDTOOLS (
         ALIGN.out.bam,
         ch_faidx,
         PROCESS_RAD.out.read_lengths,
@@ -183,7 +193,7 @@ workflow RADSEQ {
     VCF_BCFTOOLS_RADSEQ_FILTERS ( 
         ch_vcf_tbi_fasta
         )
-    
+    */
     //
     // MODULE: Run FastQC
     //

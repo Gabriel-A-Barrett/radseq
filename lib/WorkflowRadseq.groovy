@@ -213,7 +213,6 @@ class WorkflowRadseq {
                 def outputFile = new File("${outputFilePath}/split_${fileCounter}.bed")
                 outputFile.withWriter { writer ->
                     outputLines.each { outputLine ->
-                        println(outputLine)
                         writer.writeLine(outputLine)
                     }
                 }

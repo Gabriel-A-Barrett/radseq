@@ -14,7 +14,7 @@ process BCFTOOLS_MPILEUP {
     output:
     tuple val(meta), path("*bcf.gz")     , emit: bcf
     tuple val(meta), path("*bcf.gz.tbi") , emit: tbi
-    tuple val(meta), path("*stats.txt")  , emit: stats
+    tuple val(meta), path("*stats.txt")  , emit: stats, optional: true
     tuple val(meta), path("*.mpileup.gz"), emit: mpileup, optional: true
     path  "versions.yml"                 , emit: versions
 
@@ -25,17 +25,17 @@ process BCFTOOLS_MPILEUP {
     def args = task.ext.args ?: ''
     def args2 = task.ext.args2 ?: ''
     def args3 = task.ext.args3 ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    def prefix = task.ext.prefix ?: "${meta.id}" + "_" + "${meta.interval}"
     def mpileup = save_mpileup ? "| tee ${prefix}.mpileup" : ""
     def bgzip_mpileup = save_mpileup ? "bgzip ${prefix}.mpileup" : ""
-    def intervals = intervals ? "-T ${intervals}" : "" // chr:from-to
+    def intervals_command = intervals ? "-T ${intervals}" : "" // chr:from-to
     """
     bcftools \\
         mpileup \\
         --fasta-ref $fasta \\
         $args \\
         $bam \\
-        $intervals \\
+        $intervals_command \\
         $mpileup \\
         | bcftools call --output-type u $args2 \\
         | bcftools view --output-file ${prefix}.bcf.gz --output-type b $args3
@@ -44,7 +44,7 @@ process BCFTOOLS_MPILEUP {
 
     tabix -p vcf -f ${prefix}.bcf.gz
 
-    bcftools stats ${prefix}.bcf.gz > ${prefix}.bcftools_stats.txt
+    #bcftools stats ${prefix}.bcf.gz > ${prefix}.bcftools_stats.txt
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

@@ -1,17 +1,17 @@
 //
-// MPILEUP variant calling: BCFTOOLS for variantcalling, SAMTools for controlfreec input
+// MPILEUP variant calling: BCFTOOLS for variantcalling
 //
-// For all modules here:
-// A when clause condition is defined in the conf/modules.config to determine if the module should be run
 
 include { BCFTOOLS_MPILEUP                           } from '../../../modules/nf-core/bcftools/mpileup/main'
+include { TABIX_TABIX } from '../../../modules/nf-core/tabix/tabix/main'
+include { VCF_GATHER_BCFTOOLS } from '../../nf-core/vcf_gather_bcftools/main'
 
 workflow BAM_VARIANT_CALLING_MPILEUP {
     take:
     cram_crai      // channel: [mandatory] [ meta, cram, crai,]
-    fasta
-    intervals
-    keep_bcftools_mpileup
+    fasta          // channel: [mandatory] [ meta, fasta ]
+    intervals      // channel: [mandatory] [ meta, intervals]
+    keep_bcftools_mpileup // boolean: save intermediate .mpileup files
 
     main:
     versions = Channel.empty()
@@ -27,15 +27,37 @@ workflow BAM_VARIANT_CALLING_MPILEUP {
                 interval:     bed.getName().tokenize( '.' )[0],
                 ref_id:       meta.ref_id
             ],
-            cram, crai, file(bed), fasta]
+            cram, crai, file(bed), fasta ]
         }
 
     BCFTOOLS_MPILEUP(ch_cram_crai_bed_fasta, keep_bcftools_mpileup)
     versions = versions.mix(BCFTOOLS_MPILEUP.out.versions)
 
+    TABIX_TABIX ( BCFTOOLS_MPILEUP.out.bcf )
+
+    // channel
+    ch_mpile_bcf = BCFTOOLS_MPILEUP.out.bcf.combine( TABIX_TABIX.out.csi, by: [0] )
     
+    // is there more than one output channel
+    if (ch_mpile_bcf.count().map { it > 1 } ) { 
+        
+        ch_mpile_bcfs = ch_mpile_bcf
+            .map{ meta, bcf, tbi -> 
+            [[
+                id: meta.id,
+                ref_id: meta.ref_id
+            ], 
+            bcf, tbi ] 
+            }.groupTuple()
+        
+        //
+        // SUBWORKFLOW
+        //
+        VCF_GATHER_BCFTOOLS ( ch_mpile_bcfs, [], true)
+    }
 
     emit:
+
 
     versions
 }

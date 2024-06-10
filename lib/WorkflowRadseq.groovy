@@ -213,7 +213,11 @@ class WorkflowRadseq {
                 def outputFile = new File("${outputFilePath}/split_${fileCounter}.bed")
                 outputFile.withWriter { writer ->
                     outputLines.each { outputLine ->
-                        writer.writeLine(outputLine)
+                        def chrom = outputLine[0]
+                        def start_pos = outputLine[1]
+                        def end_pos = outputLine[2]
+                        def interval = "${chrom}:${start_pos}-${end_pos}"
+                        writer.writeLine(interval)
                     }
                 }
                 outputFilePaths << outputFile
@@ -225,8 +229,11 @@ class WorkflowRadseq {
         if (!outputLines.isEmpty()) {
             def outputFile = new File("${outputFilePath}/split_${fileCounter}.bed")
             outputFile.withWriter { writer ->
-                outputLines.each { chrom, start_pos, end_pos ->
-                    def interval = "${chrom}:${start_pos}:${end_pos}"
+                outputLines.each { lineParts ->
+                    def chrom = outputLine[0]
+                    def start_pos = outputLine[1]
+                    def end_pos = outputLine[2]
+                    def interval = "${chrom}:${start_pos}-${end_pos}"
                     writer.writeLine(interval)
                 }
             }

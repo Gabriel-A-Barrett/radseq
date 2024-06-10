@@ -105,7 +105,6 @@ workflow RADSEQ {
             //
             // SUBWORKFLOW: Cluster READS after applying unique read thresholds within and among samples.
             //  option to provide a list of minimum depth thresholds. See nextflow.config for more details
-
             ch_reference = DENOVO (
                 INPUT_CHECK.out.reads, 
                 params.sequence_type // sequence type exe.: 'SE', 'PE', ''
@@ -136,8 +135,6 @@ workflow RADSEQ {
     
     }
 
-    // embed function to have reference match bed and mbam_bai me
-
     //
     // SUBWORKFLOW: generate fasta indexes, align input files, dedup reads, index bam, calculate statistics
     //      if denovo and paired then pass length_stats to bwa mem
@@ -152,8 +149,7 @@ workflow RADSEQ {
     ch_versions = ch_versions.mix(ALIGN.out.versions)
 
     //
-    // SUBWORKFLOW: write interval files based on read coverage or genome samtools faidx index
-    //
+    // SUBWORKFLOW: write interval files based on read coverage or reference genome index
     //
     ch_intervals = BAM_INTERVALS_BEDTOOLS (
         ALIGN.out.cram,
@@ -166,7 +162,6 @@ workflow RADSEQ {
     //
     // SUBWORKFLOW variant calling with bcftools
     //
-
     BAM_VARIANT_CALLING_MPILEUP ( 
         ALIGN.out.mcram_crai,
         ch_reference,

@@ -19,20 +19,19 @@ workflow BAM_INTERVALS_BEDTOOLS {
     main:
     ch_versions = Channel.empty()
 
-    // Reduce the number of bam files to be passed in the subworkflow via parameters
-        // Purpose: Memory constraints for large sample sizes at BEDTOOLS_MERGE_COV
-        // .randomSample(# to subset to, random seed) random seed is critical to -resume functionality
-    ch_bam = params.subset_intervals_channel ? bam.randomSample(params.subset_intervals_channel, 234) : bam
-
-    ch_bed = BEDTOOLS_BAMTOBED (ch_bam).bed
-    ch_versions = ch_versions.mix (BEDTOOLS_BAMTOBED.out.versions)
-
-    ch_bed_to_merge = ch_bed.map { WorkflowRadseq.groupMetaID(it) }.groupTuple() // [meta, bed]
-    
-    ch_mbed = BEDOPS_MERGE_BED (ch_bed_to_merge).bed
-    ch_versions = ch_versions.mix(BEDOPS_MERGE_BED.out.versions)
-
     if (params.variant_calling_interval_strategy == 'bedtools') {
+        // Reduce the number of bam files to be passed in the subworkflow via parameters
+            // Purpose: Memory constraints for large sample sizes at BEDTOOLS_MERGE_COV
+            // .randomSample(# to subset to, random seed) random seed is critical to -resume functionality
+        ch_bam = params.subset_intervals_channel ? bam.randomSample(params.subset_intervals_channel, 234) : bam
+
+        ch_bed = BEDTOOLS_BAMTOBED (ch_bam).bed
+        ch_versions = ch_versions.mix (BEDTOOLS_BAMTOBED.out.versions)
+
+        ch_bed_to_merge = ch_bed.map { WorkflowRadseq.groupMetaID(it) }.groupTuple() // [meta, bed]
+        
+        ch_mbed = BEDOPS_MERGE_BED (ch_bed_to_merge).bed
+        ch_versions = ch_versions.mix(BEDOPS_MERGE_BED.out.versions)
 
         ch_sorted_mbed = BEDTOOLS_SORT (ch_mbed, faidx.map{it[1]}).sorted
         ch_versions = ch_versions.mix(BEDTOOLS_SORT.out.versions)

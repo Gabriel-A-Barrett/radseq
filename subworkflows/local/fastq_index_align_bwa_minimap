@@ -2,7 +2,7 @@ include { BWA_INDEX                              } from '../../modules/nf-core/b
 include { FASTQ_ALIGN_BWA                        } from '../nf-core/fastq_align_bwa/main'
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_CRAM  } from '../../modules/nf-core/samtools/index/main'
 include { BAM_MERGE_INDEX_SAMTOOLS as CRAM_MERGE_INDEX_SAMTOOLS } from '../local/bam_merge_index_samtools'
-
+include { SAMTOOLS_STATS as DENOVO_REFERENCE_CRAM_STATS } from '../../modules/nf-core/samtools/stats/main'
 
 workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
 
@@ -22,7 +22,7 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
         .join(BWA_INDEX.out.index, by: [0])
         .combine(reads)
         .map { meta, fasta, index, meta2, reads ->
-        [[id:meta2.id, single_end:meta2.single_end, ref_id:meta.ref_id], reads, index, fasta]
+        [[ id:meta2.id, single_end:meta2.single_end, ref_id:meta.ref_id ], reads, index, fasta ]
         }
 
     cram_crai_fasta = FASTQ_ALIGN_BWA ( ch_reads_index_fasta, fasta, sequence_type, read_lengths ).cram_crai_fasta
@@ -44,9 +44,9 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
     if (params.method == 'denovo' && params.only_use_best_reference) {
         mcram_crai_fasta = mcram_crai.combine(fasta, by: [0])
 
-        SAMTOOLS_STATS ( mcram_crai_fasta )
+        DENOVO_REFERENCE_CRAM_STATS ( mcram_crai_fasta )
 
-        mcram_crai = mcram_crai.join(SAMTOOLS_STATS.out.stats, by:0)
+        mcram_crai = mcram_crai.join(DENOVO_REFERENCE_CRAM_STATS.out.stats, by:0)
             .map {
                 WorkflowRadseq.selectBestPsuedoReference(it[0],it[1],it[2],it[3])
             }

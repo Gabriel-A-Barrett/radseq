@@ -36,12 +36,15 @@ workflow BAM_VARIANT_CALLING_MPILEUP {
     TABIX_TABIX ( BCFTOOLS_MPILEUP.out.bcf )
 
     // channel
-    ch_mpile_bcf = BCFTOOLS_MPILEUP.out.bcf.combine( TABIX_TABIX.out.csi, by: [0] )
-    
+    ch_bcf_tbi = BCFTOOLS_MPILEUP.out.bcf.combine( TABIX_TABIX.out.csi, by: [0] )
+
+    ch_bcf = BCFTOOLS_MPILEUP.out.bcf
+    ch_csi = TABIX_TABIX.out.csi
+
     // is there more than one output channel
-    if (ch_mpile_bcf.count().map { it > 1 } ) { 
+    if (ch_bcf_tbi.count().map { it > 1 } ) { 
         
-        ch_mpile_bcfs = ch_mpile_bcf
+        ch_mpile_bcfs = ch_bcf_tbi
             .map{ meta, bcf, tbi -> 
             [[
                 id: meta.id,
@@ -54,10 +57,15 @@ workflow BAM_VARIANT_CALLING_MPILEUP {
         // SUBWORKFLOW
         //
         VCF_GATHER_BCFTOOLS ( ch_mpile_bcfs, [], true)
+        
+        // Overwrite channels
+        ch_bcf = VCF_GATHER_BCFTOOLS.out.vcf
+        ch_csi = VCF_GATHER_BCFTOOLS.out.csi
     }
 
     emit:
-
+    bcf = ch_bcf
+    tbi = ch_csi
 
     versions
 }

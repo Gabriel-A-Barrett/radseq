@@ -20,9 +20,14 @@ process BCFTOOLS_CONCAT {
     script:
     def args = task.ext.args   ?: ''
     prefix   = task.ext.prefix ?: "${meta.id}" + '_' + "${meta.ref_id}"
+    def extension = args.contains("--output-type b") || args.contains("-Ob") ? "bcf.gz" :
+                    args.contains("--output-type u") || args.contains("-Ou") ? "bcf" :
+                    args.contains("--output-type z") || args.contains("-Oz") ? "vcf.gz" :
+                    args.contains("--output-type v") || args.contains("-Ov") ? "vcf" :
+                    "vcf.gz"
     """
     bcftools concat \\
-        --output ${prefix}.vcf.gz \\
+        --output ${prefix}.${extension} \\
         $args \\
         --threads $task.cpus \\
         ${vcfs}

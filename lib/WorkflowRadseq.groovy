@@ -229,7 +229,7 @@ class WorkflowRadseq {
         if (!outputLines.isEmpty()) {
             def outputFile = new File("${outputFilePath}/split_${fileCounter}.bed")
             outputFile.withWriter { writer ->
-                outputLines.each { lineParts ->
+                outputLines.each { outputLine ->
                     def chrom = outputLine[0]
                     def start_pos = outputLine[1]
                     def end_pos = outputLine[2]

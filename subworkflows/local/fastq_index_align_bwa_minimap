@@ -1,5 +1,11 @@
 include { BWA_INDEX                              } from '../../modules/nf-core/bwa/index'
-include { FASTQ_ALIGN_BWA                        } from '../nf-core/fastq_align_bwa/main'
+
+include { FASTQ_BWA_INDEX_MEM } from '../local/fastq_bwa_index_mem'
+
+
+//include { FASTQ_ALIGN_BWA                        } from '../nf-core/fastq_align_bwa/main'
+
+
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_CRAM  } from '../../modules/nf-core/samtools/index/main'
 include { BAM_MERGE_INDEX_SAMTOOLS as CRAM_MERGE_INDEX_SAMTOOLS } from '../local/bam_merge_index_samtools'
 include { SAMTOOLS_STATS as DENOVO_REFERENCE_CRAM_STATS } from '../../modules/nf-core/samtools/stats/main'
@@ -16,20 +22,11 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
     main:
     ch_versions = Channel.empty()
 
-    BWA_INDEX ( fasta )
-
-    ch_reads_index_fasta = fasta
-        .join(BWA_INDEX.out.index, by: [0])
-        .combine(reads)
-        .map { meta, fasta, index, meta2, reads ->
-        [[ id:meta2.id, single_end:meta2.single_end, ref_id:meta.ref_id ], reads, index, fasta ]
-        }
-
-    cram_crai_fasta = FASTQ_ALIGN_BWA ( ch_reads_index_fasta, fasta, sequence_type, read_lengths ).cram_crai_fasta
+    cram_crai_fasta = FASTQ_BWA_INDEX_MEM ( reads, fasta, sequence_type, read_lengths ).cram_crai_fasta
 
     // add per-individual mapping rates to end of channel
     if (params.check_alignment_mapping_rates) {
-        FASTQ_ALIGN_BWA.out.flagstat.map { WorkflowRadseq.getCramPercentMapped(params,it) }.set{ ch_percent_mapped }
+        FASTQ_BWA_INDEX_MEM.out.flagstat.map { WorkflowRadseq.getCramPercentMapped(params,it) }.set{ ch_percent_mapped }
     }
 
     // remove files that didn't make the threshold in params
@@ -67,12 +64,12 @@ workflow FASTQ_INDEX_ALIGN_BWA_MINIMAP {
 
     emit:
     cram            = cram_crai_fasta_filtered.map{meta,cram,crai,fasta -> [meta, cram]}
-    cram_crai       = FASTQ_ALIGN_BWA.out.cram_crai
+    cram_crai       = FASTQ_BWA_INDEX_MEM.out.cram_crai
     cram_crai_fasta = cram_crai_fasta_filtered
     mcram_crai
-    stats           = FASTQ_ALIGN_BWA.out.stats
-    flagstat        = FASTQ_ALIGN_BWA.out.flagstat
-    idxstats        = FASTQ_ALIGN_BWA.out.idxstats
+    stats           = FASTQ_BWA_INDEX_MEM.out.stats
+    flagstat        = FASTQ_BWA_INDEX_MEM.out.flagstat
+    idxstats        = FASTQ_BWA_INDEX_MEM.out.idxstats
     
     versions = ch_versions
 }

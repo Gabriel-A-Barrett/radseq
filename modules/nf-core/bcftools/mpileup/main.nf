@@ -13,7 +13,7 @@ process BCFTOOLS_MPILEUP {
 
     output:
     tuple val(meta), path("*bcf.gz")     , emit: bcf
-    tuple val(meta), path("*bcf.gz.tbi") , emit: tbi
+    tuple val(meta), path("*bcf.gz.csi") , emit: csi
     tuple val(meta), path("*stats.txt")  , emit: stats, optional: true
     tuple val(meta), path("*.mpileup.gz"), emit: mpileup, optional: true
     path  "versions.yml"                 , emit: versions
@@ -28,7 +28,7 @@ process BCFTOOLS_MPILEUP {
     def prefix = task.ext.prefix ?: "${meta.id}" + "_" + "${meta.interval}"
     def mpileup = save_mpileup ? "| tee ${prefix}.mpileup" : ""
     def bgzip_mpileup = save_mpileup ? "bgzip ${prefix}.mpileup" : ""
-    def intervals_command = intervals ? "-T ${intervals}" : "" // chr:from-to
+    def intervals_command = intervals ? "-R ${intervals}" : "" // chr:from-to
     """
     bcftools \\
         mpileup \\
@@ -42,7 +42,7 @@ process BCFTOOLS_MPILEUP {
 
     $bgzip_mpileup
 
-    tabix -p vcf -f ${prefix}.bcf.gz
+    tabix -p vcf -C -f ${prefix}.bcf.gz
 
     #bcftools stats ${prefix}.bcf.gz > ${prefix}.bcftools_stats.txt
 

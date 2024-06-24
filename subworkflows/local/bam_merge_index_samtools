@@ -10,6 +10,11 @@ workflow BAM_MERGE_INDEX_SAMTOOLS {
     main:
     ch_versions = Channel.empty()
 
+    //
+    // Groovy: merge based on maximum number of sequences
+    //      how to merge subseqeuent: 1) different individuals same sites 2) all sites
+    //
+
     ch_bam_to_merge = bam.map { WorkflowRadseq.addRefIdToChannels(params, it) }.groupTuple()
 
     MERGE_BAM(ch_bam_to_merge, fasta, fai)

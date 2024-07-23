@@ -32,7 +32,7 @@ workflow FASTQ_BWA_INDEX_MEM {
                 }
 
             // add specific arguments 
-            cram = BWA_MEM (ch_fastq_bch_reads_index_fastawaindex, sequence_type, read_lengths.collect()).cram
+            cram = BWA_MEM (ch_reads_index_fasta, sequence_type, read_lengths.collect()).cram
             ch_versions = ch_versions.mix(BWA_MEM.out.versions)
                 break
 

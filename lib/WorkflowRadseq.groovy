@@ -204,10 +204,10 @@ class WorkflowRadseq {
 
         def linesPerFile = params.splitNLines
         def outputLines = []
-        def fileCounter = 0
+        def fileCounter = 0 // increments
 
         inputLines.eachLine { line ->
-            outputLines << line
+            outputLines << line.split("\t")
 
             if (outputLines.size() == linesPerFile) {
                 def outputFile = new File("${outputFilePath}/split_${fileCounter}.bed")
@@ -216,7 +216,7 @@ class WorkflowRadseq {
                         def chrom = outputLine[0]
                         def start_pos = outputLine[1]
                         def end_pos = outputLine[2]
-                        def interval = "${chrom}:${start_pos}-${end_pos}"
+                        def interval = "${chrom}\t${start_pos}\t${end_pos}"
                         writer.writeLine(interval)
                     }
                 }
@@ -233,7 +233,7 @@ class WorkflowRadseq {
                     def chrom = outputLine[0]
                     def start_pos = outputLine[1]
                     def end_pos = outputLine[2]
-                    def interval = "${chrom}:${start_pos}-${end_pos}"
+                    def interval = "${chrom}\t${start_pos}\t${end_pos}"
                     writer.writeLine(interval)
                 }
             }

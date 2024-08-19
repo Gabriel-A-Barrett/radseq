@@ -2,6 +2,8 @@ include { BWA_INDEX                            } from '../../modules/nf-core/bwa
 include { BWA_MEM                              } from '../../modules/nf-core/bwa/mem/main.nf'
 include { BWAMEM2_INDEX                        } from '../../modules/nf-core/bwamem2/index/main.nf'
 include { BWAMEM2_MEM                          } from '../../modules/nf-core/bwamem2/mem/main.nf'
+include { SAMTOOLS_INDEX                       } from '../../modules/nf-core/samtools/index/main'
+include { BAM_STATS_SAMTOOLS                   } from '../nf-core/bam_stats_samtools/main'
 
 workflow FASTQ_BWA_INDEX_MEM {
      
@@ -22,12 +24,15 @@ workflow FASTQ_BWA_INDEX_MEM {
             bwaindex = BWA_INDEX (fasta).index
             ch_versions = ch_versions.mix(BWA_INDEX.out.versions)
 
-            // expand channel for multiple denovo references
-            ch_fastq_bwaindex = reads.combine(bwaindex)
-                .map { WorkflowRadseq.addRefIdToChannels(params, it) }
+            ch_reads_index_fasta = fasta
+                .join(BWA_INDEX.out.index, by: [0])
+                .combine(reads)
+                .map { meta, fasta, index, meta2, reads ->
+                [[ id:meta2.id, single_end:meta2.single_end, ref_id:meta.ref_id ], reads, index, fasta ]
+                }
 
             // add specific arguments 
-            bam = BWA_MEM (ch_fastq_bwaindex, true, sequence_type, read_lengths.collect()).bam
+            cram = BWA_MEM (ch_reads_index_fasta, sequence_type, read_lengths.collect()).cram
             ch_versions = ch_versions.mix(BWA_MEM.out.versions)
                 break
 
@@ -37,23 +42,48 @@ workflow FASTQ_BWA_INDEX_MEM {
             ch_versions = ch_versions.mix(BWAMEM2_INDEX.out.versions)
 
             // expand channel for multiple denovo references and merge correct indices
-            ch_fastq_bwaindex = reads.combine(bwaindex)
-                .map { WorkflowRadseq.addRefIdToChannels(params, it) }
+            ch_reads_index_fasta = fasta
+                .join(BWAMEM2_INDEX.out.index, by: [0])
+                .combine(reads)
+                .map { meta, fasta, index, meta2, reads ->
+                [[ id:meta2.id, single_end:meta2.single_end, ref_id:meta.ref_id ], reads, index, fasta ]
+                }
 
             // add specific arguments 
-            bam = BWAMEM2_MEM (ch_fastq_bwaindex, true, sequence_type, read_lengths.collect()).bam
+            cram = BWAMEM2_MEM (ch_reads_index_fasta, sequence_type, read_lengths.collect()).cram
             ch_versions = ch_versions.mix(BWAMEM2_MEM.out.versions)
                 break
             
         default:
-            
             exit 1, "unsupported aligner: ${aligner} \n supported options:" + params.aligner_options
-        
-    }
+        }
+
+    SAMTOOLS_INDEX ( cram )
+    ch_cram_crai = cram.combine(SAMTOOLS_INDEX.out.crai, by: [0])
+
+    ch_cram_crai_fasta = ch_cram_crai
+        .map { meta, cram, crai ->
+            [[id:meta.id.split(/[^\p{L}]/)[0], single_end:meta.single_end, ref_id:meta.ref_id], cram, crai]
+        }
+        .combine ( fasta, by: [0] )
+        .map { meta, cram, crai, fasta ->
+            [[id:cram.getSimpleName(), single_end:meta.single_end, ref_id:meta.ref_id], cram, crai, fasta]            
+        }
+
+    BAM_STATS_SAMTOOLS ( ch_cram_crai_fasta )
+    ch_versions = ch_versions.mix(BAM_STATS_SAMTOOLS.out.versions.first())
 
     emit:
-    bam
-
-    versions = ch_versions
+    cram
+    cram_crai = ch_cram_crai
+    cram_crai_fasta = ch_cram_crai_fasta
+    flagstat  = BAM_STATS_SAMTOOLS.out.flagstat
+    //bam      = BAM_STATS_SAMTOOLS.out.bam      // channel: [ val(meta), path(bam) ]
+    //bai      = BAM_STATS_SAMTOOLS.out.bai      // channel: [ val(meta), path(bai) ]
+    //csi      = BAM_STATS_SAMTOOLS.out.csi      // channel: [ val(meta), path(csi) ]
+    stats    = BAM_STATS_SAMTOOLS.out.stats    // channel: [ val(meta), path(stats) ]
+    flagstat = BAM_STATS_SAMTOOLS.out.flagstat // channel: [ val(meta), path(flagstat) ]
+    idxstats = BAM_STATS_SAMTOOLS.out.idxstats // channel: [ val(meta), path(idxstats) ]
+    versions = ch_versions                          // channel: [ path(versions.yml) ]    
 
 }

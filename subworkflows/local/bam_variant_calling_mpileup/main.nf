@@ -33,13 +33,13 @@ workflow BAM_VARIANT_CALLING_MPILEUP {
     BCFTOOLS_MPILEUP(ch_cram_crai_bed_fasta, keep_bcftools_mpileup)
     versions = versions.mix(BCFTOOLS_MPILEUP.out.versions)
 
-    TABIX_TABIX ( BCFTOOLS_MPILEUP.out.bcf )
+    //TABIX_TABIX ( BCFTOOLS_MPILEUP.out.bcf )
 
     // channel
-    ch_bcf_tbi = BCFTOOLS_MPILEUP.out.bcf.combine( TABIX_TABIX.out.csi, by: [0] )
+    ch_bcf_tbi = BCFTOOLS_MPILEUP.out.bcf.combine( BCFTOOLS_MPILEUP.out.csi, by: [0] )
 
     ch_bcf = BCFTOOLS_MPILEUP.out.bcf
-    ch_csi = TABIX_TABIX.out.csi
+    ch_csi = BCFTOOLS_MPILEUP.out.csi
 
     // is there more than one output channel
     if (ch_bcf_tbi.count().map { it > 1 } ) { 
@@ -53,6 +53,7 @@ workflow BAM_VARIANT_CALLING_MPILEUP {
             bcf, tbi ] 
             }.groupTuple()
         
+        ch_mpile_bcfs.view()
         //
         // SUBWORKFLOW
         //

@@ -2,8 +2,8 @@
 // MPILEUP variant calling: BCFTOOLS for variantcalling
 //
 
-include { BCFTOOLS_MPILEUP                           } from '../../../modules/nf-core/bcftools/mpileup/main'
-include { TABIX_TABIX } from '../../../modules/nf-core/tabix/tabix/main'
+include { BCFTOOLS_MPILEUP    } from '../../../modules/nf-core/bcftools/mpileup/main'
+include { TABIX_TABIX         } from '../../../modules/nf-core/tabix/tabix/main'
 include { VCF_GATHER_BCFTOOLS } from '../../nf-core/vcf_gather_bcftools/main'
 
 workflow BAM_VARIANT_CALLING_MPILEUP {
@@ -53,7 +53,6 @@ workflow BAM_VARIANT_CALLING_MPILEUP {
             bcf, tbi ] 
             }.groupTuple()
         
-        ch_mpile_bcfs.view()
         //
         // SUBWORKFLOW
         //
@@ -61,12 +60,14 @@ workflow BAM_VARIANT_CALLING_MPILEUP {
         
         // Overwrite channels
         ch_bcf = VCF_GATHER_BCFTOOLS.out.vcf
+        ch_tbi = VCF_GATHER_BCFTOOLS.out.tbi
         ch_csi = VCF_GATHER_BCFTOOLS.out.csi
     }
 
     emit:
     bcf = ch_bcf
-    tbi = ch_csi
+    tbi = ch_tbi
+    csi = ch_csi
 
     versions
 }

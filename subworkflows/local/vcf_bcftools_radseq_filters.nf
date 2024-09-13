@@ -21,13 +21,13 @@ workflow VCF_BCFTOOLS_RADSEQ_FILTERS {
 
     ch_vcf_tbi = ch_vcf.join(TABIX.out.tbi)
 
-    ch_miss = Channel.fromList(params.fraction_missingness_list)
-    ch_mac = Channel.fromList(params.minor_allele_count_list)
+    def fraction_missingness = params.fraction_missingness_list.toString().split(',') as List ?: [0.01,0.1]
+    def minor_allele_count = params.minor_allele_count_list.toString().split(',') as List ?: [5,10,20]
 
-    FILTER1 ( ch_vcf_tbi, [], [], [], ch_miss, ch_mac)
+    FILTER1 ( ch_vcf_tbi, [], [], [], Channel.value(fraction_missingness), Channel.value(minor_allele_count))
 
-    RADSEQ_FILTERS_1 ( FILTER1.out.vcf , [], 'first')
+    RADSEQ_FILTERS_1 ( FILTER1.out.vcf , [], 'first') // site-based filtering and collect indv
     
-    RADSEQ_FILTERS_2 ( FILTER1.out.vcf, RADSEQ_FILTERS_1.out.txt, 'second')
+    RADSEQ_FILTERS_2 ( FILTER1.out.vcf, RADSEQ_FILTERS_1.out.txt, 'second') // remove indv. and re-apply site-based filtering
 
 }

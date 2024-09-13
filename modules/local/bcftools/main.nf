@@ -36,11 +36,7 @@ process RADSEQ_FILTERS {
     if (round == 'first') {
         """
         MAX_DP=\$(bcftools query -f '%DP\\n' ${vcf} | awk '{ sum += \$1; n++ } END { if (n > 0) print sum / n; }')
-        cat $vcf | \
-        $ab
-        $mq
-        $pr
-        $st
+        bcftools view $vcf | \
         bcftools filter -i"F_MISSING<${fmissing} && MAC>${mac} && INFO/DP<${maxdp} && FORMAT/DP>${mindp}" -Oz -o ${prefix}_RADseqPopFilters.${extension}
 
         paste <(bcftools query -f '[%SAMPLE\\t]\\n' ${prefix}_RADseqPopFilters.${extension} | head -1 | tr '\\t' '\\n') \
@@ -58,11 +54,7 @@ process RADSEQ_FILTERS {
     } else {
         """
         MAX_DP=\$(bcftools query -f '%DP\\n' ${vcf} | awk '{ sum += \$1; n++ } END { if (n > 0) print sum / n; }')        
-        cat $vcf |\\
-         $ab
-         $mq
-         $pr
-         $st
+        bcftools view $vcf |\\
          bcftools view -S ^${samples2remove} -i"F_MISSING<${fmissing} && MAC>${mac} && INFO/DP<${maxdp} && FORMAT/DP>${mindp}" -Oz -o ${prefix}_rmvindv_RADseqPopFilters.${extension}
 
         cat <<-END_VERSIONS > versions.yml

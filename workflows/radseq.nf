@@ -40,9 +40,9 @@ include { CDHIT_RAINBOW as DENOVO                } from '../subworkflows/local/f
 include { FASTQ_INDEX_ALIGN_BWA_MINIMAP as ALIGN } from '../subworkflows/local/fastq_index_align_bwa_minimap'
 include { BAM_INTERVALS_BEDTOOLS                 } from '../subworkflows/local/bam_intervals_bedtools'
 include { BAM_VARIANT_CALLING_FREEBAYES          } from '../subworkflows/local/bam_variant_calling_freebayes'
+include { BAM_VARIANT_CALLING_MPILEUP           } from '../subworkflows/local/bam_variant_calling_mpileup/main'
 include { FASTQ_UNZIP                            } from '../subworkflows/local/fastq_unzip.nf'
 include { VCF_BCFTOOLS_RADSEQ_FILTERS            } from '../subworkflows/local/vcf_bcftools_radseq_filters.nf'
-include { BAM_VARIANT_CALLING_MPILEUP           } from '../subworkflows/local/bam_variant_calling_mpileup/main'
 
 /*
 ========================================================================================
@@ -177,18 +177,28 @@ workflow RADSEQ {
         true
     ).vcf
     ch_versions = ch_versions.mix(BAM_VARIANT_CALLING_FREEBAYES.out.versions)
+    */
 
-    ch_vcf_tbi_fasta = ch_vcf
-        .join(BAM_VARIANT_CALLING_FREEBAYES.out.tbi,by:0)
+    // remove single_end key from groovy map so can join with bcf and tbi channel
+    ch_reference = ch_reference.map { meta, fasta -> 
+        metaf = [:]
+        metaf.id = meta.id
+        metaf.ref_id = meta.ref_id
+        return [ metaf, fasta ]
+    }
+
+
+    ch_bcf_tbi_fasta = BAM_VARIANT_CALLING_MPILEUP.out.bcf
+        .join(BAM_VARIANT_CALLING_MPILEUP.out.tbi,by:0)
         .join(ch_reference, by:0)
 
     //
     // SUBWORKFLOW: Apply RADseq Specific Filters (depth, missingness, allele counts)
     //
     VCF_BCFTOOLS_RADSEQ_FILTERS ( 
-        ch_vcf_tbi_fasta
+        ch_bcf_tbi_fasta
         )
-    */
+    
     //
     // MODULE: Run FastQC
     //

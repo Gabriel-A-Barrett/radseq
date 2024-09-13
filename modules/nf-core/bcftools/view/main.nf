@@ -12,8 +12,8 @@ process BCFTOOLS_VIEW {
     path(regions)
     path(targets)
     path(samples)
-    each (fraction_missingness)
-    each (minor_allele_count)
+    each fraction_missingness
+    each minor_allele_count
 
     output:
     tuple val(meta), path("*.{vcf,vcf.gz,bcf,bcf.gz}") , emit: vcf
@@ -24,7 +24,7 @@ process BCFTOOLS_VIEW {
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}" + '_' + "${meta.ref_id}" + '_' + "${fraction_missingness}" + '_' + "${minor_allele_count}"
+    def prefix = task.ext.prefix ?: "${meta.id}" + '_' + "${meta.ref_id}" + '_fmiss' + "${fraction_missingness.replaceAll('\\.','')}" + '_mac' + "${minor_allele_count}"
     def regions_file  = regions ? "--regions-file ${regions}" : ""
     def targets_file = targets ? "--targets-file ${targets}" : ""
     def samples_file =  samples ? "--samples-file ${samples}" : ""

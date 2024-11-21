@@ -31,7 +31,7 @@ class WorkflowRadseq {
             if (!params.minreaddepth_withinindividual || params.minreaddepth_withinindividual == null) {
                 log.warn("using default range of values for minReadDepth_withinIndividual")
             }
-            if (params.method == 'denovo' && !params.minreaddepth_betweenindividual || params.minreaddepth_betweenindividual == null) {
+            if (params.minreaddepth_betweenindividual || params.minreaddepth_betweenindividual == null) {
                 log.warn("using default range of values for minReadDepth_BetweenIndividual")
             }   
         }  

@@ -28,7 +28,7 @@ process BCFTOOLS_MPILEUP {
     def prefix = task.ext.prefix ?: "${meta.id}" + "_" + "${meta.interval}"
     def mpileup = save_mpileup ? "| tee ${prefix}.mpileup" : ""
     def bgzip_mpileup = save_mpileup ? "bgzip ${prefix}.mpileup" : ""
-    def intervals_command = intervals ? "-R ${intervals}" : "" // chr:from-to
+    def intervals_command = intervals ? "-T ${intervals}" : "" // chr:from-to
     """
     bcftools \\
         mpileup \\
